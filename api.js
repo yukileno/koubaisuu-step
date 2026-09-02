@@ -1,8 +1,8 @@
-// GASのWebアプリURL (デプロイ後にここを書き換える)
-const GAS_URL = "https://script.google.com/macros/s/AKfycby_DUMMY_URL/exec";
+// GASのWebアプリURL
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzUWv4NrZrbapQfqZzLIhjDzDejNG3hhMbxU5wyDZ78vA2oYsADe2qNCWwQmUs5swpj/exec";
 
-// テスト用のモック動作を有効にするフラグ
-const USE_MOCK = true; 
+// モックフラグ (本番連携のため false に設定)
+const USE_MOCK = false; 
 
 const api = {
   // セッショントークンの取得 (不正防止用)
