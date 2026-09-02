@@ -19,16 +19,14 @@ const api = {
   async registerScore(name, score, token) {
     if (USE_MOCK) {
       console.log(`Mock Register: ${name}, ${score}`);
-      return new Promise(resolve => setTimeout(resolve, 500)); // 通信のモック遅延
+      return new Promise(resolve => setTimeout(resolve, 500));
     }
     
-    // GASはCORS対応のため、リクエストボディにJSONを含める場合は no-cors 等の制約があるが、
-    // GETや、form-urlencodedによるPOSTが基本。
-    // 今回は Content-Type: application/json で doPost を呼び出す。
+    // GASのCORS制約を回避するため text/plain でPOST送信（Simple Request）
     const res = await fetch(GAS_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'text/plain;charset=utf-8'
       },
       body: JSON.stringify({
         action: 'register',
@@ -57,7 +55,7 @@ const api = {
       }, 500));
     }
     
-    const res = await fetch(GAS_URL + "?action=getRanking", { method: 'GET' });
+    const res = await fetch(GAS_URL + "?action=getRanking");
     const json = await res.json();
     if (!json.success) {
       throw new Error(json.error || '取得失敗');
