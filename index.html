@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>公倍数ステップ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- タイトル画面 -->
+    <div id="screen-title" class="screen active">
+      <h1>公倍数ステップ</h1>
+      <p class="subtitle">2つの数の公倍数を、小さい順に3つ見つけよう！</p>
+      <button id="btn-start" class="btn-primary">スタート</button>
+      <button id="btn-ranking-view" class="btn-secondary">ランキング</button>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="screen-game" class="screen">
+      <div class="header">
+        <div class="time-display">残り時間: <span id="time-left">90</span>秒</div>
+        <div class="score-display">スコア: <span id="score">0</span></div>
+      </div>
+      <div class="main-area">
+        <div class="problem-area">
+          <h2 id="current-question">? と ? の公倍数</h2>
+          <div class="step-indicator">
+            <div class="step" id="step-0">
+              <div class="step-label">1. 最小公倍数</div>
+              <div class="ans-slot" id="ans-0">?</div>
+            </div>
+            <div class="step" id="step-1">
+              <div class="step-label">2番目</div>
+              <div class="ans-slot" id="ans-1">?</div>
+            </div>
+            <div class="step" id="step-2">
+              <div class="step-label">3番目</div>
+              <div class="ans-slot" id="ans-2">?</div>
+            </div>
+          </div>
+          <div class="input-display" id="input-display"></div>
+          <div class="feedback" id="feedback-msg"></div>
+        </div>
+      </div>
+      <div class="numpad">
+        <button class="num-btn" data-num="1">1</button>
+        <button class="num-btn" data-num="2">2</button>
+        <button class="num-btn" data-num="3">3</button>
+        <button class="num-btn" data-num="4">4</button>
+        <button class="num-btn" data-num="5">5</button>
+        <button class="num-btn" data-num="6">6</button>
+        <button class="num-btn" data-num="7">7</button>
+        <button class="num-btn" data-num="8">8</button>
+        <button class="num-btn" data-num="9">9</button>
+        <button class="func-btn" id="btn-clear">クリア</button>
+        <button class="num-btn" data-num="0">0</button>
+        <button class="func-btn" id="btn-submit">けってい</button>
+      </div>
+    </div>
+
+    <!-- リザルト画面 -->
+    <div id="screen-result" class="screen">
+      <h2>ゲームおわり！</h2>
+      <div class="result-stats">
+        <p>スコア: <span id="final-score">0</span></p>
+        <p>正解した問題: <span id="final-correct">0</span> 問</p>
+      </div>
+      <div id="ranking-form-area" class="card">
+        <p>ランキングに登録しよう！</p>
+        <input type="text" id="nickname" placeholder="ニックネーム (最大12文字)" maxlength="12">
+        <button id="btn-register" class="btn-primary">登録する</button>
+        <div id="register-msg"></div>
+      </div>
+      <div class="result-actions">
+        <button id="btn-retry" class="btn-primary">もう一度あそぶ</button>
+        <button id="btn-back-title" class="btn-secondary">タイトルへ</button>
+      </div>
+    </div>
+
+    <!-- ランキング画面 -->
+    <div id="screen-ranking" class="screen">
+      <h2>ランキング</h2>
+      <div id="ranking-list" class="ranking-list">
+        <p>読み込み中...</p>
+      </div>
+      <button id="btn-ranking-close" class="btn-secondary">もどる</button>
+    </div>
+  </div>
+  <script src="api.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
