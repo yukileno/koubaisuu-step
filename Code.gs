@@ -40,7 +40,7 @@ function handleRegister(data) {
   const name = data.name ? data.name.toString().substring(0, 12) : "名無し";
   const score = parseInt(data.score, 10);
   
-  if (isNaN(score) || score < 0 || score > 5000) {
+  if (isNaN(score) || score < 0) {
     return createJsonResponse({ success: false, error: '不正なスコアです' });
   }
   
