@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>公倍数ステップ★アドベンチャー</title>
+  <title>公倍数ステップ★たまごのひみつ</title>
   <link rel="stylesheet" href="style.css">
-  <!-- ポップなフォントの読み込み -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
@@ -15,24 +14,53 @@
     <!-- 紙吹雪用キャンバス -->
     <canvas id="confetti-canvas"></canvas>
 
-    <!-- サウンド切替ボタン -->
-    <button id="btn-sound-toggle" class="sound-toggle" aria-label="音の切り替え">🔊</button>
+    <!-- サウンド切替ボタン & 引き継ぎボタン -->
+    <div class="top-quick-actions">
+      <button id="btn-sync-open" class="action-circle-btn" aria-label="きろくの引継ぎ">🎒<span class="btn-bubble">きろく</span></button>
+      <button id="btn-sound-toggle" class="action-circle-btn" aria-label="音の切り替え">🔊</button>
+    </div>
 
-    <!-- タイトル画面 -->
+    <!-- ==================== タイトル画面 ==================== -->
     <div id="screen-title" class="screen active">
       <div class="title-badge">★ しょうがく5ねんせい さんすう ★</div>
-      <h1 class="game-title">公倍数ステップ<span class="title-sub">★アドベンチャー</span></h1>
-      <div class="character-preview">
-        <div class="mascot jumping">🚀</div>
+      <h1 class="game-title">公倍数ステップ<span class="title-sub">★ たまごのひみつ 🐣</span></h1>
+      
+      <!-- たまご育成メインショーケース -->
+      <div class="egg-showcase-card">
+        <div class="egg-avatar-wrap">
+          <div id="egg-container" class="egg-container">
+            <img id="egg-display-img" src="assets/egg_stage0.jpg" alt="不思議なたまご" class="egg-img">
+            <!-- 殻割れ・親鳥演出用レイヤー -->
+            <div id="egg-overlay" class="egg-overlay"></div>
+          </div>
+          <div id="egg-stage-tag" class="egg-stage-tag">🌱 Stage 0: つるつるのたまご</div>
+        </div>
+
+        <div class="egg-progress-details">
+          <div class="progress-title-row">
+            <span class="progress-label">🥚 じぶんの正解数:</span>
+            <span class="progress-num"><strong id="total-correct-display">0</strong> / 5,000 問</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="egg-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+          </div>
+          <p id="next-crack-hint" class="next-hint-text">あと <span id="next-crack-count">100</span> 問でヒビが入るよ！</p>
+          
+          <!-- クラスみんなの合算 -->
+          <div class="class-summary-pill" id="class-summary-pill">
+            <span class="class-icon">🏫</span>
+            <span class="class-text">クラスのみんな: <strong id="class-total-display">...</strong> 問正解中！</span>
+          </div>
+        </div>
       </div>
-      <p class="subtitle">さいしょう公倍数を見つけて、ステップをかけのぼろう！</p>
+
       <div class="title-buttons">
         <button id="btn-start" class="btn-primary btn-pulse">▶ ゲームスタート！</button>
-        <button id="btn-ranking-view" class="btn-secondary">🏆 ランキング</button>
+        <button id="btn-ranking-view" class="btn-secondary">🏆 ハイスコアランキング</button>
       </div>
     </div>
 
-    <!-- ゲーム画面 -->
+    <!-- ==================== ゲーム画面 ==================== -->
     <div id="screen-game" class="screen">
       <!-- ヘッダー情報 -->
       <div class="header">
@@ -42,7 +70,16 @@
             <span id="time-left" class="value">90</span><span class="unit">秒</span>
           </div>
         </div>
+        
         <div class="header-center">
+          <!-- ミニたまごリアクション -->
+          <div class="mini-egg-status" id="mini-egg-status" title="正解でたまごが喜ぶよ！">
+            <div class="mini-egg-icon" id="mini-egg-icon">🥚</div>
+            <div class="mini-egg-info">
+              <span class="mini-label">せいかい累計</span>
+              <span class="mini-val" id="mini-correct-count">0</span><span class="mini-unit">問</span>
+            </div>
+          </div>
           <!-- フィーバーゲージ -->
           <div class="fever-container">
             <div class="fever-label">⚡ FEVER GAUGE</div>
@@ -51,6 +88,7 @@
             </div>
           </div>
         </div>
+
         <div class="header-right">
           <div class="score-box">
             <span class="label">スコア</span>
@@ -97,7 +135,7 @@
         </div>
       </div>
 
-      <!-- テンキーエリア -->
+      <!-- テンキーエリア（ぷにぷにボタン） -->
       <div class="numpad">
         <button class="num-btn" data-num="1">1</button>
         <button class="num-btn" data-num="2">2</button>
@@ -114,7 +152,7 @@
       </div>
     </div>
 
-    <!-- リザルト画面 -->
+    <!-- ==================== リザルト画面 ==================== -->
     <div id="screen-result" class="screen">
       <div class="result-card">
         <div class="result-header">
@@ -123,6 +161,22 @@
           <div id="result-rank" class="result-rank">称号: 公倍数マスター</div>
         </div>
         
+        <!-- 卵の成長リザルトアニメーションエリア -->
+        <div class="result-egg-box">
+          <div class="result-egg-preview">
+            <img id="result-egg-img" src="assets/egg_stage0.jpg" alt="たまご" class="result-egg-img">
+            <div id="result-egg-overlay" class="egg-overlay"></div>
+          </div>
+          <div class="result-egg-stats">
+            <div class="egg-gain-pill">🐣 今回のせいかい: <strong id="result-gain-correct">+0</strong> 問！</div>
+            <div class="egg-total-line">累計正解: <strong id="result-total-correct">0</strong> / 5,000 問</div>
+            <div class="progress-bar-bg small">
+              <div id="result-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div id="result-next-crack" class="next-hint-text">あと 100 問で次の変化…？</div>
+          </div>
+        </div>
+
         <div class="result-stats-grid">
           <div class="stat-item">
             <div class="stat-label">トータルスコア</div>
@@ -139,7 +193,7 @@
         </div>
 
         <div id="ranking-form-area" class="ranking-form">
-          <p class="form-title">🏆 ランキングにきろくを残そう！</p>
+          <p class="form-title">🏆 ハイスコアランキングに登録</p>
           <div class="input-row">
             <input type="text" id="nickname" placeholder="ニックネーム (12文字まで)" maxlength="12">
             <button id="btn-register" class="btn-primary">登録する</button>
@@ -154,7 +208,7 @@
       </div>
     </div>
 
-    <!-- ランキング画面 -->
+    <!-- ==================== ランキング画面 ==================== -->
     <div id="screen-ranking" class="screen">
       <div class="ranking-container">
         <h2>🏆 殿堂入りランキング Top 20</h2>
@@ -164,6 +218,48 @@
         <button id="btn-ranking-close" class="btn-secondary">🏠 タイトルへもどる</button>
       </div>
     </div>
+
+    <!-- ==================== きろく引継ぎ・バックアップモーダル ==================== -->
+    <div id="modal-sync" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🎒 きろくの引継ぎ・バックアップ</h3>
+          <button id="btn-modal-close" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            いつも遊んでいるタブレット以外からでも、ニックネームを入力すれば前回の正解数とたまごの状態を引き継げます！
+          </p>
+          <div class="input-group">
+            <label for="sync-nickname">ニックネーム</label>
+            <input type="text" id="sync-nickname" placeholder="登録したニックネーム" maxlength="12">
+          </div>
+          <div class="modal-actions">
+            <button id="btn-sync-save" class="btn-primary">☁️ 今のきろくを保存</button>
+            <button id="btn-sync-load" class="btn-secondary">📥 きろくを呼び出す</button>
+          </div>
+          <div id="sync-msg" class="sync-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 卵のヒビ割れ・親鳥誕生お祝いモーダル ==================== -->
+    <div id="modal-evolution" class="modal hidden">
+      <div class="modal-content evolution-content">
+        <div class="evolution-stars">✨ 🎉 ✨</div>
+        <h2 id="evolution-title" class="evolution-title">たまごにヒビが入ったよ！</h2>
+        <div class="evolution-img-wrap">
+          <img id="evolution-img" src="assets/egg_stage1.jpg" alt="進化したたまご" class="evolution-img">
+          <div id="evolution-overlay" class="egg-overlay"></div>
+        </div>
+        <p id="evolution-desc" class="evolution-desc">
+          100問正解おめでとう！<br>
+          ピキッ…と小さなたまごのヒビが生まれたよ！
+        </p>
+        <button id="btn-evolution-close" class="btn-primary btn-pulse">やったね！</button>
+      </div>
+    </div>
+
   </div>
 
   <script src="sound.js"></script>

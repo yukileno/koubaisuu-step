@@ -1,3 +1,7 @@
+// ===================================================
+// 公倍数ステップ★たまごのひみつ - メインゲームスクリプト
+// ===================================================
+
 // 要素の取得
 const screens = {
   title: document.getElementById('screen-title'),
@@ -11,11 +15,28 @@ const el = {
   btnStart: document.getElementById('btn-start'),
   btnRankingView: document.getElementById('btn-ranking-view'),
   btnSoundToggle: document.getElementById('btn-sound-toggle'),
+  btnSyncOpen: document.getElementById('btn-sync-open'),
+  
+  // タイトル卵ディスプレイ
+  eggContainer: document.getElementById('egg-container'),
+  eggDisplayImg: document.getElementById('egg-display-img'),
+  eggOverlay: document.getElementById('egg-overlay'),
+  eggStageTag: document.getElementById('egg-stage-tag'),
+  totalCorrectDisplay: document.getElementById('total-correct-display'),
+  eggProgressFill: document.getElementById('egg-progress-fill'),
+  nextCrackHint: document.getElementById('next-crack-hint'),
+  nextCrackCount: document.getElementById('next-crack-count'),
+  classTotalDisplay: document.getElementById('class-total-display'),
+  
+  // ゲーム画面
   timeLeft: document.getElementById('time-left'),
   score: document.getElementById('score'),
   feverBar: document.getElementById('fever-bar'),
   comboBadge: document.getElementById('combo-badge'),
   comboCount: document.getElementById('combo-count'),
+  miniEggStatus: document.getElementById('mini-egg-status'),
+  miniEggIcon: document.getElementById('mini-egg-icon'),
+  miniCorrectCount: document.getElementById('mini-correct-count'),
   question: document.getElementById('current-question'),
   steps: [
     document.getElementById('step-0'),
@@ -32,21 +53,207 @@ const el = {
   numBtns: document.querySelectorAll('.num-btn'),
   btnClear: document.getElementById('btn-clear'),
   btnSubmit: document.getElementById('btn-submit'),
+  
+  // リザルト画面
   finalScore: document.getElementById('final-score'),
   finalCorrect: document.getElementById('final-correct'),
   finalMaxCombo: document.getElementById('final-max-combo'),
   resultStars: document.getElementById('result-stars'),
   resultRank: document.getElementById('result-rank'),
+  resultEggImg: document.getElementById('result-egg-img'),
+  resultEggOverlay: document.getElementById('result-egg-overlay'),
+  resultGainCorrect: document.getElementById('result-gain-correct'),
+  resultTotalCorrect: document.getElementById('result-total-correct'),
+  resultProgressFill: document.getElementById('result-progress-fill'),
+  resultNextCrack: document.getElementById('result-next-crack'),
   nickname: document.getElementById('nickname'),
   btnRegister: document.getElementById('btn-register'),
   registerMsg: document.getElementById('register-msg'),
   btnRetry: document.getElementById('btn-retry'),
   btnBackTitle: document.getElementById('btn-back-title'),
   btnRankingClose: document.getElementById('btn-ranking-close'),
-  rankingList: document.getElementById('ranking-list')
+  rankingList: document.getElementById('ranking-list'),
+  
+  // 引継ぎモーダル
+  modalSync: document.getElementById('modal-sync'),
+  btnModalClose: document.getElementById('btn-modal-close'),
+  syncNickname: document.getElementById('sync-nickname'),
+  btnSyncSave: document.getElementById('btn-sync-save'),
+  btnSyncLoad: document.getElementById('btn-sync-load'),
+  syncMsg: document.getElementById('sync-msg'),
+  
+  // 進化お祝いモーダル
+  modalEvolution: document.getElementById('modal-evolution'),
+  evolutionTitle: document.getElementById('evolution-title'),
+  evolutionImg: document.getElementById('evolution-img'),
+  evolutionOverlay: document.getElementById('evolution-overlay'),
+  evolutionDesc: document.getElementById('evolution-desc'),
+  btnEvolutionClose: document.getElementById('btn-evolution-close')
 };
 
+// ===================================================
+// 進捗ストレージ管理（累計正解数）
+// ===================================================
+const STORAGE_KEY = 'koubaisuu_egg_progress_v2';
+
+let progress = {
+  totalCorrect: 0,
+  nickname: '',
+  lastStage: 0
+};
+
+function loadLocalProgress() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      progress.totalCorrect = parseInt(parsed.totalCorrect, 10) || 0;
+      progress.nickname = parsed.nickname || '';
+      progress.lastStage = parseInt(parsed.lastStage, 10) || 0;
+    }
+  } catch (e) {
+    console.warn('Progress load failed:', e);
+  }
+}
+
+function saveLocalProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  } catch (e) {
+    console.warn('Progress save failed:', e);
+  }
+}
+
+// 卵ステージ情報の定義（全5000問）
+const EGG_STAGES = [
+  { stage: 0, min: 0, max: 99, name: '🌱 Stage 0: つるつるのたまご', img: 'assets/egg_stage0.jpg', desc: 'まだヒビは入っていません。大事に育てよう！' },
+  { stage: 1, min: 100, max: 499, name: '✨ Stage 1: かすかなヒビ', img: 'assets/egg_stage1.jpg', desc: '100問正解達成！ピキッと小さなたまごのヒビが入ったよ！' },
+  { stage: 2, min: 500, max: 999, name: '⚡ Stage 2: 小さなヒビ', img: 'assets/egg_stage2.jpg', desc: '500問正解達成！ヒビが少しずつ枝分かれしてきたよ！' },
+  { stage: 3, min: 1000, max: 1999, name: '🌟 Stage 3: 広がるヒビ', img: 'assets/egg_stage3.jpg', desc: '1,000問正解達成！たまご全体にヒビが広がってきたよ！' },
+  { stage: 4, min: 2000, max: 2999, name: '💫 Stage 4: 光あふれるヒビ', img: 'assets/egg_stage4.jpg', desc: '2,000問正解達成！ヒビの隙間から神秘的な光が漏れ出している！' },
+  { stage: 5, min: 3000, max: 3999, name: '🔥 Stage 5: 割れかけのたまご', img: 'assets/egg_stage4.jpg', desc: '3,000問正解達成！ヒビが深く大きくなり、たまごが揺れている！', overlayType: 'stage5' },
+  { stage: 6, min: 4000, max: 4999, name: '🐣 Stage 6: いまにも生まれそう！', img: 'assets/egg_stage4.jpg', desc: '4,000問正解達成！殻の中から可愛い羽と瞳がチラ見えしているよ！', overlayType: 'stage6' },
+  { stage: 7, min: 5000, max: Infinity, name: '👑 Stage 7: 伝説の親鳥誕生！', img: 'assets/egg_stage4.jpg', desc: '🎉 5,000問正解達成！！ついにパッカーン！と殻が割れて、伝説の親鳥が誕生しました！！', overlayType: 'stage7' }
+];
+
+function getEggStageInfo(correctCount) {
+  for (let i = EGG_STAGES.length - 1; i >= 0; i--) {
+    if (correctCount >= EGG_STAGES[i].min) {
+      return EGG_STAGES[i];
+    }
+  }
+  return EGG_STAGES[0];
+}
+
+// 卵オーバーレイのSVG生成
+function getEggOverlayHTML(overlayType) {
+  if (overlayType === 'stage5') {
+    return `
+      <svg viewBox="0 0 512 512" style="width:100%;height:100%;position:absolute;top:0;left:0;pointer-events:none;">
+        <filter id="glow-s5"><feGaussianBlur stdDeviation="8" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+        <path d="M 230 160 L 255 225 L 215 285 L 285 345 L 260 385" stroke="#FFFFFF" stroke-width="12" fill="none" filter="url(#glow-s5)" stroke-linecap="round"/>
+        <path d="M 255 225 L 315 245 L 335 295" stroke="#FFF" stroke-width="8" fill="none" filter="url(#glow-s5)" stroke-linecap="round"/>
+        <path d="M 230 160 L 255 225 L 215 285 L 285 345 L 260 385" stroke="#FFD700" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="240" cy="230" r="14" fill="#FFF" filter="url(#glow-s5)"/>
+        <circle cx="280" cy="300" r="10" fill="#FFEAA7" filter="url(#glow-s5)"/>
+      </svg>
+    `;
+  }
+  if (overlayType === 'stage6') {
+    return `
+      <svg viewBox="0 0 512 512" style="width:100%;height:100%;position:absolute;top:0;left:0;pointer-events:none;">
+        <filter id="glow-s6"><feGaussianBlur stdDeviation="8" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+        <ellipse cx="260" cy="260" rx="65" ry="50" fill="#2C1810" />
+        <ellipse cx="260" cy="260" rx="60" ry="46" fill="#FDCB6E" filter="url(#glow-s6)" opacity="0.6"/>
+        <ellipse cx="260" cy="265" rx="42" ry="34" fill="#FFEAA7" />
+        <circle cx="242" cy="258" r="7" fill="#2D3436" />
+        <circle cx="240" cy="256" r="2.5" fill="#FFF" />
+        <circle cx="278" cy="258" r="7" fill="#2D3436" />
+        <circle cx="276" cy="256" r="2.5" fill="#FFF" />
+        <circle cx="233" cy="266" r="6" fill="#FF7675" opacity="0.7" />
+        <circle cx="287" cy="266" r="6" fill="#FF7675" opacity="0.7" />
+        <polygon points="260,262 254,272 266,272" fill="#E17055" />
+        <path d="M 195 240 L 220 250 L 210 270 L 230 285 L 205 300 L 240 315 L 280 318 L 310 300 L 295 275 L 325 255 L 305 235 L 270 215 L 240 220 Z" 
+              fill="none" stroke="#FFF9E6" stroke-width="8" stroke-linejoin="round" />
+      </svg>
+    `;
+  }
+  if (overlayType === 'stage7') {
+    return `
+      <svg viewBox="0 0 512 512" class="parent-bird-active" style="width:100%;height:100%;position:absolute;top:0;left:0;pointer-events:none;">
+        <defs>
+          <radialGradient id="birdGrad" cx="40%" cy="40%" r="60%">
+            <stop offset="0%" stop-color="#FFEAA7" />
+            <stop offset="60%" stop-color="#FDCB6E" />
+            <stop offset="100%" stop-color="#F39C12" />
+          </radialGradient>
+          <radialGradient id="wingGrad" cx="30%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#74B9FF" />
+            <stop offset="100%" stop-color="#0984E3" />
+          </radialGradient>
+          <filter id="glow-s7"><feGaussianBlur stdDeviation="12" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+        </defs>
+        <circle cx="256" cy="270" r="140" fill="#FFF9E6" opacity="0.6" filter="url(#glow-s7)" />
+        <!-- 割れた下の殻 -->
+        <path d="M 170 320 Q 256 420 342 320 L 320 300 L 295 320 L 270 295 L 245 320 L 220 295 L 195 320 Z" 
+              fill="#FFF9E6" stroke="#E0D0C0" stroke-width="4" />
+        <!-- 親鳥の体 -->
+        <ellipse cx="256" cy="270" rx="75" ry="70" fill="url(#birdGrad)" />
+        <!-- 翼 -->
+        <path d="M 185 260 Q 130 220 150 280 Q 170 310 200 290 Z" fill="url(#wingGrad)" />
+        <path d="M 327 260 Q 382 220 362 280 Q 342 310 312 290 Z" fill="url(#wingGrad)" />
+        <ellipse cx="256" cy="285" rx="45" ry="40" fill="#FFFDF5" opacity="0.9" />
+        <ellipse cx="230" cy="245" rx="10" ry="12" fill="#2D3436" /><circle cx="227" cy="240" r="4.5" fill="#FFF" />
+        <ellipse cx="282" cy="245" rx="10" ry="12" fill="#2D3436" /><circle cx="279" cy="240" r="4.5" fill="#FFF" />
+        <circle cx="216" cy="258" r="10" fill="#FF7675" opacity="0.8" />
+        <circle cx="296" cy="258" r="10" fill="#FF7675" opacity="0.8" />
+        <path d="M 256 250 L 245 264 Q 256 270 267 264 Z" fill="#E17055" />
+        <!-- 王冠 -->
+        <path d="M 232 205 L 240 180 L 256 195 L 272 180 L 280 205 Z" fill="#FFD700" stroke="#E67E22" stroke-width="3" />
+        <circle cx="256" cy="195" r="3" fill="#3498DB" />
+        <!-- 天使の輪 -->
+        <ellipse cx="256" cy="165" rx="35" ry="10" fill="none" stroke="#FFEAA7" stroke-width="5" filter="url(#glow-s7)" />
+      </svg>
+    `;
+  }
+  return '';
+}
+
+// UIの卵表示を更新
+function updateEggDisplay() {
+  const info = getEggStageInfo(progress.totalCorrect);
+  
+  // タイトル画面
+  el.eggDisplayImg.src = info.img;
+  el.eggOverlay.innerHTML = getEggOverlayHTML(info.overlayType);
+  el.eggStageTag.textContent = info.name;
+  el.totalCorrectDisplay.textContent = progress.totalCorrect.toLocaleString();
+  
+  const pct = Math.min(100, (progress.totalCorrect / 5000) * 100);
+  el.eggProgressFill.style.width = `${pct}%`;
+  
+  if (info.stage >= 7) {
+    el.nextCrackHint.innerHTML = '🎉 <strong style="color:#FF7675">伝説の親鳥が誕生しました！おめでとう！</strong>';
+  } else {
+    const nextTarget = EGG_STAGES[info.stage + 1].min;
+    const diff = nextTarget - progress.totalCorrect;
+    el.nextCrackCount.textContent = diff.toLocaleString();
+  }
+
+  // ミニ卵（ゲーム画面）
+  el.miniCorrectCount.textContent = progress.totalCorrect;
+  if (info.stage >= 7) {
+    el.miniEggIcon.textContent = '🕊️';
+  } else if (info.stage >= 4) {
+    el.miniEggIcon.textContent = '✨';
+  } else {
+    el.miniEggIcon.textContent = '🥚';
+  }
+}
+
+// ===================================================
 // ゲーム状態管理
+// ===================================================
 let state = {
   score: 0,
   timeLeft: 90,
@@ -54,10 +261,10 @@ let state = {
   currentQ: null,
   currentStep: 0,
   inputValue: '',
-  correctCount: 0,
+  sessionCorrect: 0, // 今回のプレイでの正解数
   combo: 0,
   maxCombo: 0,
-  feverGauge: 0, // 0 ~ 100
+  feverGauge: 0,
   isFever: false,
   feverTimer: null,
   sessionToken: null
@@ -83,6 +290,10 @@ const questions = [
 function showScreen(screenName) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[screenName].classList.add('active');
+  if (screenName === 'title') {
+    updateEggDisplay();
+    refreshClassProgress();
+  }
 }
 
 // サウンド切替
@@ -98,7 +309,7 @@ async function startGame() {
   state.timeLeft = 90;
   state.currentStep = 0;
   state.inputValue = '';
-  state.correctCount = 0;
+  state.sessionCorrect = 0;
   state.combo = 0;
   state.maxCombo = 0;
   state.feverGauge = 0;
@@ -167,6 +378,7 @@ function updateDisplays() {
   el.timeLeft.textContent = state.timeLeft;
   el.score.textContent = state.score;
   el.feverBar.style.width = `${state.feverGauge}%`;
+  el.miniCorrectCount.textContent = progress.totalCorrect;
 
   if (state.combo >= 2) {
     el.comboBadge.classList.remove('hidden');
@@ -206,7 +418,7 @@ function handleSubmit() {
     state.combo++;
     if (state.combo > state.maxCombo) state.maxCombo = state.combo;
 
-    // スコア計算（コンボ倍率 ＋ フィーバー倍率）
+    // スコア計算
     let multiplier = 1 + (state.combo - 1) * 0.15;
     if (state.isFever) multiplier *= 2;
     const addedScore = Math.round(10 * multiplier);
@@ -221,24 +433,34 @@ function handleSubmit() {
     }
 
     sounds.playStepSuccess(state.currentStep);
+    sounds.playEggBounce();
+    
+    // ミニ卵をポヨンと弾ませる
+    el.miniEggIcon.classList.remove('bounce');
+    void el.miniEggIcon.offsetWidth; // リフロー強制
+    el.miniEggIcon.classList.add('bounce');
+
     el.feedbackMsg.textContent = `＋${addedScore}pt!`;
-    el.feedbackMsg.style.color = 'var(--primary)';
+    el.feedbackMsg.style.color = '#00B894';
     
     state.currentStep++;
     state.inputValue = '';
     
     if (state.currentStep > 2) {
-      // 1問コンプリート！
-      state.correctCount++;
+      // 1問コンプリート！累計正解数を加算！
+      state.sessionCorrect++;
+      progress.totalCorrect++;
+      saveLocalProgress();
+
       const bonusScore = Math.round(30 * multiplier);
       state.score += bonusScore;
       
       sounds.playQuestionClear();
-      createConfetti(15);
+      createConfetti(18);
       el.feedbackMsg.textContent = `PERFECT! ＋${bonusScore}pt!`;
       updateStepUI();
       updateDisplays();
-      setTimeout(nextQuestion, 600);
+      setTimeout(nextQuestion, 550);
     } else {
       updateStepUI();
       updateInputDisplay();
@@ -251,7 +473,7 @@ function handleSubmit() {
     state.feverGauge = Math.max(0, state.feverGauge - 20);
     
     el.feedbackMsg.textContent = 'ちがうよ！(-3秒)';
-    el.feedbackMsg.style.color = 'var(--accent)';
+    el.feedbackMsg.style.color = 'var(--primary)';
     state.timeLeft = Math.max(0, state.timeLeft - 3);
     state.inputValue = '';
     updateInputDisplay();
@@ -259,7 +481,7 @@ function handleSubmit() {
   }
 }
 
-// フィーバーモード開始
+// フィーバーモード
 function startFever() {
   state.isFever = true;
   state.feverGauge = 100;
@@ -293,13 +515,13 @@ function endGame() {
   el.appContainer.classList.remove('fever-mode');
   
   sounds.playResult();
-  createConfetti(50);
+  createConfetti(40);
 
   el.finalScore.textContent = state.score;
-  el.finalCorrect.textContent = state.correctCount;
+  el.finalCorrect.textContent = state.sessionCorrect;
   el.finalMaxCombo.textContent = state.maxCombo;
 
-  // ランク＆星の判定
+  // 称号の判定
   let stars = '★☆☆';
   let rank = '公倍数ビギナー';
   if (state.score >= 500) {
@@ -318,11 +540,69 @@ function endGame() {
   el.resultStars.textContent = stars;
   el.resultRank.textContent = `称号: ${rank}`;
 
-  el.nickname.value = '';
+  // 卵成長リザルトの表示
+  const currentStageInfo = getEggStageInfo(progress.totalCorrect);
+  el.resultGainCorrect.textContent = `+${state.sessionCorrect}`;
+  el.resultTotalCorrect.textContent = progress.totalCorrect.toLocaleString();
+  el.resultEggImg.src = currentStageInfo.img;
+  el.resultEggOverlay.innerHTML = getEggOverlayHTML(currentStageInfo.overlayType);
+
+  const pct = Math.min(100, (progress.totalCorrect / 5000) * 100);
+  el.resultProgressFill.style.width = `${pct}%`;
+
+  if (currentStageInfo.stage >= 7) {
+    el.resultNextCrack.innerHTML = '🎉 <strong>親鳥誕生達成済み！</strong>';
+  } else {
+    const nextTarget = EGG_STAGES[currentStageInfo.stage + 1].min;
+    const diff = nextTarget - progress.totalCorrect;
+    el.resultNextCrack.textContent = `あと ${diff.toLocaleString()} 問で次の変化…！`;
+  }
+
+  // ステージ昇格チェック
+  if (currentStageInfo.stage > progress.lastStage) {
+    setTimeout(() => {
+      triggerEvolutionModal(currentStageInfo);
+    }, 800);
+    progress.lastStage = currentStageInfo.stage;
+    saveLocalProgress();
+  }
+
+  // ニックネームが既にある場合はGASへ自動バックアップ送信
+  if (progress.nickname) {
+    api.saveProgress(progress.nickname, progress.totalCorrect, currentStageInfo.name)
+      .catch(e => console.warn('Auto backup failed:', e));
+  }
+
+  if (progress.nickname) {
+    el.nickname.value = progress.nickname;
+  }
   el.registerMsg.textContent = '';
   el.btnRegister.disabled = false;
   showScreen('result');
 }
+
+// 進化・ヒビ割れお祝いモーダル起動
+function triggerEvolutionModal(stageInfo) {
+  el.evolutionTitle.textContent = stageInfo.stage >= 7 ? '🎉 親鳥が生まれたよ！！ 🎉' : '✨ たまごにヒビが入ったよ！ ✨';
+  el.evolutionImg.src = stageInfo.img;
+  el.evolutionOverlay.innerHTML = getEggOverlayHTML(stageInfo.overlayType);
+  el.evolutionDesc.innerHTML = stageInfo.desc;
+  
+  if (stageInfo.stage >= 7) {
+    sounds.playHatchFanfare();
+    createConfetti(100);
+  } else {
+    sounds.playCrack();
+    createConfetti(50);
+  }
+
+  el.modalEvolution.classList.remove('hidden');
+}
+
+el.btnEvolutionClose.addEventListener('click', () => {
+  sounds.playClick();
+  el.modalEvolution.classList.add('hidden');
+});
 
 // イベントリスナー
 el.btnStart.addEventListener('click', startGame);
@@ -362,21 +642,29 @@ el.btnRankingClose.addEventListener('click', () => {
   showScreen('title');
 });
 
+// ハイスコアランキング登録
 el.btnRegister.addEventListener('click', async () => {
   sounds.playClick();
   const name = el.nickname.value.trim();
   if (!name) {
     el.registerMsg.textContent = 'ニックネームを入力してね！';
-    el.registerMsg.style.color = 'var(--accent)';
+    el.registerMsg.style.color = 'var(--primary)';
     return;
   }
   
+  progress.nickname = name;
+  saveLocalProgress();
+
   el.btnRegister.disabled = true;
   el.registerMsg.textContent = '通信中...';
-  el.registerMsg.style.color = 'var(--primary)';
+  el.registerMsg.style.color = '#00B894';
   
   try {
     await api.registerScore(name, state.score, state.sessionToken);
+    // 累計進捗もGASへバックアップ
+    const currentStage = getEggStageInfo(progress.totalCorrect);
+    await api.saveProgress(name, progress.totalCorrect, currentStage.name);
+
     el.registerMsg.textContent = '🎉 登録が完了しました！';
     setTimeout(() => {
       showScreen('ranking');
@@ -384,7 +672,7 @@ el.btnRegister.addEventListener('click', async () => {
     }, 800);
   } catch (err) {
     el.registerMsg.textContent = 'エラー: ' + err.message;
-    el.registerMsg.style.color = 'var(--accent)';
+    el.registerMsg.style.color = 'var(--primary)';
     el.btnRegister.disabled = false;
   }
 });
@@ -398,7 +686,6 @@ async function loadRanking() {
       return;
     }
     
-    // スコア降順ソート
     list.sort((a, b) => b.score - a.score);
     
     el.rankingList.innerHTML = list.map((item, index) => {
@@ -418,6 +705,94 @@ async function loadRanking() {
     }).join('');
   } catch (err) {
     el.rankingList.innerHTML = '<p class="loading-text">ランキングの読み込みに失敗しました。</p>';
+  }
+}
+
+// ===================================================
+// きろく引継ぎ・バックアップモーダル処理
+// ===================================================
+el.btnSyncOpen.addEventListener('click', () => {
+  sounds.playClick();
+  el.syncNickname.value = progress.nickname || '';
+  el.syncMsg.textContent = '';
+  el.modalSync.classList.remove('hidden');
+});
+
+el.btnModalClose.addEventListener('click', () => {
+  sounds.playClick();
+  el.modalSync.classList.add('hidden');
+});
+
+el.btnSyncSave.addEventListener('click', async () => {
+  sounds.playClick();
+  const name = el.syncNickname.value.trim();
+  if (!name) {
+    el.syncMsg.textContent = 'ニックネームを入力してね！';
+    el.syncMsg.style.color = 'var(--primary)';
+    return;
+  }
+  progress.nickname = name;
+  saveLocalProgress();
+
+  el.syncMsg.textContent = 'クラウドに保存中...';
+  el.syncMsg.style.color = '#00B894';
+
+  try {
+    const stageInfo = getEggStageInfo(progress.totalCorrect);
+    await api.saveProgress(name, progress.totalCorrect, stageInfo.name);
+    el.syncMsg.textContent = '☁️ 保存が完了しました！いつでも引き継げます。';
+    refreshClassProgress();
+  } catch (e) {
+    el.syncMsg.textContent = '保存に失敗しました: ' + e.message;
+    el.syncMsg.style.color = 'var(--primary)';
+  }
+});
+
+el.btnSyncLoad.addEventListener('click', async () => {
+  sounds.playClick();
+  const name = el.syncNickname.value.trim();
+  if (!name) {
+    el.syncMsg.textContent = 'ニックネームを入力してね！';
+    el.syncMsg.style.color = 'var(--primary)';
+    return;
+  }
+
+  el.syncMsg.textContent = 'きろくを探しています...';
+  el.syncMsg.style.color = '#00B894';
+
+  try {
+    const res = await api.loadProgress(name);
+    if (res.exists) {
+      progress.nickname = name;
+      progress.totalCorrect = parseInt(res.totalCorrect, 10) || 0;
+      const stageInfo = getEggStageInfo(progress.totalCorrect);
+      progress.lastStage = stageInfo.stage;
+      saveLocalProgress();
+      updateEggDisplay();
+
+      el.syncMsg.textContent = `🎉 「${name}」さんのきろく（${progress.totalCorrect}問）を復元しました！`;
+      setTimeout(() => {
+        el.modalSync.classList.add('hidden');
+      }, 1500);
+    } else {
+      el.syncMsg.textContent = `「${name}」のきろくが見つかりませんでした。`;
+      el.syncMsg.style.color = 'var(--primary)';
+    }
+  } catch (e) {
+    el.syncMsg.textContent = '読み込みに失敗しました: ' + e.message;
+    el.syncMsg.style.color = 'var(--primary)';
+  }
+});
+
+// クラス全体の合計進捗を更新
+async function refreshClassProgress() {
+  try {
+    const res = await api.getClassProgress();
+    if (res && res.success) {
+      el.classTotalDisplay.textContent = res.classTotalCorrect.toLocaleString();
+    }
+  } catch (e) {
+    console.warn('Class progress load failed:', e);
   }
 }
 
@@ -442,7 +817,7 @@ function createConfetti(count = 30) {
   canvas.height = canvas.parentElement.clientHeight;
 
   const particles = [];
-  const colors = ['#FFD700', '#FF5722', '#4CAF50', '#00BCD4', '#E91E63', '#9C27B0'];
+  const colors = ['#FFD700', '#FF7675', '#55EFC4', '#74B9FF', '#FD79A8', '#A29BFE'];
 
   for (let i = 0; i < count; i++) {
     particles.push({
@@ -484,3 +859,8 @@ function createConfetti(count = 30) {
   }
   render();
 }
+
+// 初期化
+loadLocalProgress();
+updateEggDisplay();
+refreshClassProgress();

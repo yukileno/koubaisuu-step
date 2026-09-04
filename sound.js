@@ -132,6 +132,71 @@ class SoundEffectManager {
       osc.stop(this.ctx.currentTime + 1.2);
     });
   }
+
+  // 卵がポヨンと弾む可愛い音
+  playEggBounce() {
+    if (this.muted) return;
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(540, this.ctx.currentTime + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.16);
+    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.16);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.16);
+  }
+
+  // 卵にピキッとヒビが入る音（ガラス・クリスタル風）
+  playCrack() {
+    if (this.muted) return;
+    this.init();
+    [1200, 1800, 2400].forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, this.ctx.currentTime + i * 0.03);
+      gain.gain.setValueAtTime(0.2, this.ctx.currentTime + i * 0.03);
+      gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + i * 0.03 + 0.08);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(this.ctx.currentTime + i * 0.03);
+      osc.stop(this.ctx.currentTime + i * 0.03 + 0.08);
+    });
+  }
+
+  // 親鳥誕生！大歓声＆ファンファーレ
+  playHatchFanfare() {
+    if (this.muted) return;
+    this.init();
+    const melody = [
+      { f: 523.25, d: 0.15 }, // C5
+      { f: 659.25, d: 0.15 }, // E5
+      { f: 783.99, d: 0.15 }, // G5
+      { f: 1046.50, d: 0.35 }, // C6
+      { f: 880.00, d: 0.15 }, // A5
+      { f: 1046.50, d: 0.15 }, // C6
+      { f: 1318.51, d: 0.8 }  // E6
+    ];
+    let time = this.ctx.currentTime;
+    melody.forEach(note => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(note.f, time);
+      gain.gain.setValueAtTime(0.3, time);
+      gain.gain.linearRampToValueAtTime(0.01, time + note.d);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(time);
+      osc.stop(time + note.d);
+      time += note.d * 0.9;
+    });
+  }
 }
 
 const sounds = new SoundEffectManager();
