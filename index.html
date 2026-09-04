@@ -14,15 +14,12 @@
     <!-- 紙吹雪用キャンバス -->
     <canvas id="confetti-canvas"></canvas>
 
-    <!-- サウンド切替ボタン & 引き継ぎボタン -->
-    <div class="top-quick-actions">
-      <button id="btn-sync-open" class="action-circle-btn" aria-label="きろくの引継ぎ">🎒<span class="btn-bubble">きろく</span></button>
-      <button id="btn-sound-toggle" class="action-circle-btn" aria-label="音の切り替え">🔊</button>
-    </div>
-
     <!-- ==================== タイトル画面 ==================== -->
     <div id="screen-title" class="screen active">
-      <div class="title-badge">★ しょうがく5ねんせい さんすう ★</div>
+      <div class="title-top-bar">
+        <div class="title-badge">★ しょうがく5ねんせい さんすう ★</div>
+        <button id="btn-sound-toggle-title" class="sound-pill-btn" aria-label="音の切り替え">🔊 音: ON</button>
+      </div>
       <h1 class="game-title">公倍数ステップ<span class="title-sub">★ たまごのひみつ 🐣</span></h1>
       
       <!-- たまご育成メインショーケース -->
@@ -33,7 +30,7 @@
             <!-- 殻割れ・親鳥演出用レイヤー -->
             <div id="egg-overlay" class="egg-overlay"></div>
           </div>
-          <div id="egg-stage-tag" class="egg-stage-tag">🌱 Stage 0: つるつるのたまご</div>
+          <div id="egg-stage-tag" class="egg-stage-tag">🌱 つるつるのたまご</div>
         </div>
 
         <div class="egg-progress-details">
@@ -74,6 +71,7 @@
         </div>
 
         <div class="header-right">
+          <button id="btn-sound-toggle-game" class="btn-header-sound" aria-label="音の切り替え">🔊</button>
           <button id="btn-finish-game" class="btn-header-finish">🏠 おわる</button>
         </div>
       </div>
@@ -194,6 +192,55 @@
           <p class="loading-text">ランキングを読み込み中...</p>
         </div>
         <button id="btn-ranking-close" class="btn-secondary">🏠 タイトルへもどる</button>
+      </div>
+    </div>
+
+    <!-- ==================== スタート方法選択モーダル ==================== -->
+    <div id="modal-start-choice" class="modal hidden">
+      <div class="modal-content start-choice-content">
+        <div class="modal-header">
+          <h3>🐣 どうやってあそぶ？</h3>
+          <button id="btn-choice-close" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- 前回の記録ショートカット -->
+          <div id="choice-resume-box" class="choice-resume-box hidden">
+            <div class="resume-info">
+              <span class="resume-badge">前回のきろく</span>
+              <div class="resume-name"><strong id="choice-resume-name">名前</strong> さん</div>
+              <div class="resume-detail">せいかい数: <strong id="choice-resume-count">0</strong> 問</div>
+            </div>
+            <button id="btn-choice-resume" class="btn-primary btn-resume">
+              ▶ このつづきから あそぶ！
+            </button>
+          </div>
+
+          <div class="choice-buttons-grid">
+            <!-- 選択肢: 最初から -->
+            <button id="btn-choice-new" class="choice-card-btn">
+              <div class="choice-icon">🌱</div>
+              <div class="choice-title">最初からあそぶ</div>
+              <div class="choice-desc">まあるいたまごから<br>0問でスタートするよ！</div>
+            </button>
+
+            <!-- 選択肢: きろくを呼び出す -->
+            <button id="btn-choice-load" class="choice-card-btn">
+              <div class="choice-icon">📥</div>
+              <div class="choice-title">きろくを呼び出す</div>
+              <div class="choice-desc">ニックネームを入力して<br>前回のたまごを呼び出すよ！</div>
+            </button>
+          </div>
+
+          <!-- ニックネーム入力エリア（「きろくを呼び出す」選択時に開く） -->
+          <div id="choice-nickname-area" class="choice-nickname-area hidden">
+            <p class="choice-input-label">登録したニックネームを入力してね：</p>
+            <div class="choice-input-row">
+              <input type="text" id="choice-input-name" placeholder="ニックネーム (12文字まで)" maxlength="12">
+              <button id="btn-choice-fetch" class="btn-primary">呼び出してスタート ▶</button>
+            </div>
+            <div id="choice-fetch-msg" class="choice-fetch-msg"></div>
+          </div>
+        </div>
       </div>
     </div>
 

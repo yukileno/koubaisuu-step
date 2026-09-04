@@ -14,8 +14,8 @@ const el = {
   appContainer: document.getElementById('app-container'),
   btnStart: document.getElementById('btn-start'),
   btnRankingView: document.getElementById('btn-ranking-view'),
-  btnSoundToggle: document.getElementById('btn-sound-toggle'),
-  btnSyncOpen: document.getElementById('btn-sync-open'),
+  btnSoundToggleTitle: document.getElementById('btn-sound-toggle-title'),
+  btnSoundToggleGame: document.getElementById('btn-sound-toggle-game'),
   
   // タイトル卵ディスプレイ
   eggContainer: document.getElementById('egg-container'),
@@ -67,6 +67,20 @@ const el = {
   btnRankingClose: document.getElementById('btn-ranking-close'),
   rankingList: document.getElementById('ranking-list'),
   
+  // スタート方法選択モーダル
+  modalStartChoice: document.getElementById('modal-start-choice'),
+  btnChoiceClose: document.getElementById('btn-choice-close'),
+  choiceResumeBox: document.getElementById('choice-resume-box'),
+  choiceResumeName: document.getElementById('choice-resume-name'),
+  choiceResumeCount: document.getElementById('choice-resume-count'),
+  btnChoiceResume: document.getElementById('btn-choice-resume'),
+  btnChoiceNew: document.getElementById('btn-choice-new'),
+  btnChoiceLoad: document.getElementById('btn-choice-load'),
+  choiceNicknameArea: document.getElementById('choice-nickname-area'),
+  choiceInputName: document.getElementById('choice-input-name'),
+  btnChoiceFetch: document.getElementById('btn-choice-fetch'),
+  choiceFetchMsg: document.getElementById('choice-fetch-msg'),
+
   // 引継ぎモーダル
   modalSync: document.getElementById('modal-sync'),
   btnModalClose: document.getElementById('btn-modal-close'),
@@ -293,11 +307,23 @@ function showScreen(screenName) {
   }
 }
 
-// サウンド切替
-el.btnSoundToggle.addEventListener('click', () => {
+// サウンド切替（タイトル画面 & ゲーム画面と同期）
+function updateSoundButtonDisplays(isMuted) {
+  if (el.btnSoundToggleTitle) {
+    el.btnSoundToggleTitle.textContent = isMuted ? '🔇 音: OFF' : '🔊 音: ON';
+  }
+  if (el.btnSoundToggleGame) {
+    el.btnSoundToggleGame.textContent = isMuted ? '🔇' : '🔊';
+  }
+}
+
+function handleSoundToggle() {
   const isMuted = sounds.toggleMute();
-  el.btnSoundToggle.textContent = isMuted ? '🔇' : '🔊';
-});
+  updateSoundButtonDisplays(isMuted);
+}
+
+if (el.btnSoundToggleTitle) el.btnSoundToggleTitle.addEventListener('click', handleSoundToggle);
+if (el.btnSoundToggleGame) el.btnSoundToggleGame.addEventListener('click', handleSoundToggle);
 
 // ゲーム開始
 async function startGame() {
@@ -527,8 +553,138 @@ el.btnEvolutionClose.addEventListener('click', () => {
   el.modalEvolution.classList.add('hidden');
 });
 
+// スタート方法選択モーダル制御
+function openStartChoiceModal() {
+  sounds.playClick();
+  if (el.choiceResumeBox) {
+    if (progress.nickname && progress.totalCorrect > 0) {
+      el.choiceResumeName.textContent = progress.nickname;
+      el.choiceResumeCount.textContent = progress.totalCorrect;
+      el.choiceResumeBox.classList.remove('hidden');
+    } else {
+      el.choiceResumeBox.classList.add('hidden');
+    }
+  }
+  if (el.choiceNicknameArea) {
+    el.choiceNicknameArea.classList.add('hidden');
+  }
+  if (el.choiceFetchMsg) {
+    el.choiceFetchMsg.textContent = '';
+  }
+  if (el.choiceInputName) {
+    el.choiceInputName.value = progress.nickname || '';
+  }
+  if (el.modalStartChoice) {
+    el.modalStartChoice.classList.remove('hidden');
+  }
+}
+
+function closeStartChoiceModal() {
+  sounds.playClick();
+  if (el.modalStartChoice) {
+    el.modalStartChoice.classList.add('hidden');
+  }
+}
+
+if (el.btnChoiceClose) {
+  el.btnChoiceClose.addEventListener('click', closeStartChoiceModal);
+}
+
+if (el.btnChoiceResume) {
+  el.btnChoiceResume.addEventListener('click', () => {
+    sounds.playClick();
+    if (el.modalStartChoice) el.modalStartChoice.classList.add('hidden');
+    startGame();
+  });
+}
+
+if (el.btnChoiceNew) {
+  el.btnChoiceNew.addEventListener('click', () => {
+    sounds.playClick();
+    // 「最初からあそぶ」: 進捗をリセットしてスタート
+    progress.totalCorrect = 0;
+    progress.nickname = '';
+    progress.lastStage = 0;
+    saveLocalProgress();
+    updateEggDisplay();
+    if (el.modalStartChoice) el.modalStartChoice.classList.add('hidden');
+    startGame();
+  });
+}
+
+if (el.btnChoiceLoad) {
+  el.btnChoiceLoad.addEventListener('click', () => {
+    sounds.playClick();
+    if (el.choiceNicknameArea) {
+      const isHidden = el.choiceNicknameArea.classList.contains('hidden');
+      if (isHidden) {
+        el.choiceNicknameArea.classList.remove('hidden');
+        if (el.choiceInputName) {
+          el.choiceInputName.focus();
+        }
+      } else {
+        el.choiceNicknameArea.classList.add('hidden');
+      }
+    }
+  });
+}
+
+if (el.btnChoiceFetch) {
+  el.btnChoiceFetch.addEventListener('click', async () => {
+    sounds.playClick();
+    const name = el.choiceInputName ? el.choiceInputName.value.trim() : '';
+    if (!name) {
+      if (el.choiceFetchMsg) {
+        el.choiceFetchMsg.textContent = 'ニックネームを入力してね！';
+        el.choiceFetchMsg.style.color = 'var(--primary)';
+      }
+      return;
+    }
+
+    el.btnChoiceFetch.disabled = true;
+    if (el.choiceFetchMsg) {
+      el.choiceFetchMsg.textContent = 'きろくを探しています...';
+      el.choiceFetchMsg.style.color = '#00B894';
+    }
+
+    try {
+      const res = await api.loadProgress(name);
+      if (res.exists) {
+        progress.nickname = name;
+        progress.totalCorrect = parseInt(res.totalCorrect, 10) || 0;
+        const stageInfo = getEggStageInfo(progress.totalCorrect);
+        progress.lastStage = stageInfo.stage;
+        saveLocalProgress();
+        updateEggDisplay();
+
+        if (el.choiceFetchMsg) {
+          el.choiceFetchMsg.textContent = `🎉 「${name}」さんのきろく（${progress.totalCorrect}問）を呼び出しました！スタートします！`;
+          el.choiceFetchMsg.style.color = '#00B894';
+        }
+        setTimeout(() => {
+          el.btnChoiceFetch.disabled = false;
+          if (el.modalStartChoice) el.modalStartChoice.classList.add('hidden');
+          startGame();
+        }, 700);
+      } else {
+        el.btnChoiceFetch.disabled = false;
+        if (el.choiceFetchMsg) {
+          el.choiceFetchMsg.textContent = `「${name}」のきろくが見つかりませんでした。なまえを確認してね！`;
+          el.choiceFetchMsg.style.color = 'var(--primary)';
+        }
+      }
+    } catch (e) {
+      el.btnChoiceFetch.disabled = false;
+      if (el.choiceFetchMsg) {
+        el.choiceFetchMsg.textContent = '読み込みに失敗しました: ' + e.message;
+        el.choiceFetchMsg.style.color = 'var(--primary)';
+      }
+    }
+  });
+}
+
 // イベントリスナー
-el.btnStart.addEventListener('click', startGame);
+el.btnStart.addEventListener('click', openStartChoiceModal);
 el.btnRetry.addEventListener('click', startGame);
 el.btnBackTitle.addEventListener('click', () => {
   sounds.playClick();
@@ -639,79 +795,101 @@ async function loadRanking() {
 }
 
 // ===================================================
-// きろく引継ぎ・バックアップモーダル処理
+// きろく引継ぎ・バックアップモーダル処理（互換用）
 // ===================================================
-el.btnSyncOpen.addEventListener('click', () => {
-  sounds.playClick();
-  el.syncNickname.value = progress.nickname || '';
-  el.syncMsg.textContent = '';
-  el.modalSync.classList.remove('hidden');
-});
+if (el.btnSyncOpen) {
+  el.btnSyncOpen.addEventListener('click', () => {
+    sounds.playClick();
+    if (el.syncNickname) el.syncNickname.value = progress.nickname || '';
+    if (el.syncMsg) el.syncMsg.textContent = '';
+    if (el.modalSync) el.modalSync.classList.remove('hidden');
+  });
+}
 
-el.btnModalClose.addEventListener('click', () => {
-  sounds.playClick();
-  el.modalSync.classList.add('hidden');
-});
+if (el.btnModalClose) {
+  el.btnModalClose.addEventListener('click', () => {
+    sounds.playClick();
+    if (el.modalSync) el.modalSync.classList.add('hidden');
+  });
+}
 
-el.btnSyncSave.addEventListener('click', async () => {
-  sounds.playClick();
-  const name = el.syncNickname.value.trim();
-  if (!name) {
-    el.syncMsg.textContent = 'ニックネームを入力してね！';
-    el.syncMsg.style.color = 'var(--primary)';
-    return;
-  }
-  progress.nickname = name;
-  saveLocalProgress();
-
-  el.syncMsg.textContent = 'クラウドに保存中...';
-  el.syncMsg.style.color = '#00B894';
-
-  try {
-    const stageInfo = getEggStageInfo(progress.totalCorrect);
-    await api.saveProgress(name, progress.totalCorrect, stageInfo.name);
-    el.syncMsg.textContent = '☁️ 保存が完了しました！いつでも引き継げます。';
-  } catch (e) {
-    el.syncMsg.textContent = '保存に失敗しました: ' + e.message;
-    el.syncMsg.style.color = 'var(--primary)';
-  }
-});
-
-el.btnSyncLoad.addEventListener('click', async () => {
-  sounds.playClick();
-  const name = el.syncNickname.value.trim();
-  if (!name) {
-    el.syncMsg.textContent = 'ニックネームを入力してね！';
-    el.syncMsg.style.color = 'var(--primary)';
-    return;
-  }
-
-  el.syncMsg.textContent = 'きろくを探しています...';
-  el.syncMsg.style.color = '#00B894';
-
-  try {
-    const res = await api.loadProgress(name);
-    if (res.exists) {
-      progress.nickname = name;
-      progress.totalCorrect = parseInt(res.totalCorrect, 10) || 0;
-      const stageInfo = getEggStageInfo(progress.totalCorrect);
-      progress.lastStage = stageInfo.stage;
-      saveLocalProgress();
-      updateEggDisplay();
-
-      el.syncMsg.textContent = `🎉 「${name}」さんのきろく（${progress.totalCorrect}問）を復元しました！`;
-      setTimeout(() => {
-        el.modalSync.classList.add('hidden');
-      }, 1500);
-    } else {
-      el.syncMsg.textContent = `「${name}」のきろくが見つかりませんでした。`;
-      el.syncMsg.style.color = 'var(--primary)';
+if (el.btnSyncSave) {
+  el.btnSyncSave.addEventListener('click', async () => {
+    sounds.playClick();
+    const name = el.syncNickname ? el.syncNickname.value.trim() : '';
+    if (!name) {
+      if (el.syncMsg) {
+        el.syncMsg.textContent = 'ニックネームを入力してね！';
+        el.syncMsg.style.color = 'var(--primary)';
+      }
+      return;
     }
-  } catch (e) {
-    el.syncMsg.textContent = '読み込みに失敗しました: ' + e.message;
-    el.syncMsg.style.color = 'var(--primary)';
-  }
-});
+    progress.nickname = name;
+    saveLocalProgress();
+
+    if (el.syncMsg) {
+      el.syncMsg.textContent = 'クラウドに保存中...';
+      el.syncMsg.style.color = '#00B894';
+    }
+
+    try {
+      const stageInfo = getEggStageInfo(progress.totalCorrect);
+      await api.saveProgress(name, progress.totalCorrect, stageInfo.name);
+      if (el.syncMsg) el.syncMsg.textContent = '☁️ 保存が完了しました！いつでも引き継げます。';
+    } catch (e) {
+      if (el.syncMsg) {
+        el.syncMsg.textContent = '保存に失敗しました: ' + e.message;
+        el.syncMsg.style.color = 'var(--primary)';
+      }
+    }
+  });
+}
+
+if (el.btnSyncLoad) {
+  el.btnSyncLoad.addEventListener('click', async () => {
+    sounds.playClick();
+    const name = el.syncNickname ? el.syncNickname.value.trim() : '';
+    if (!name) {
+      if (el.syncMsg) {
+        el.syncMsg.textContent = 'ニックネームを入力してね！';
+        el.syncMsg.style.color = 'var(--primary)';
+      }
+      return;
+    }
+
+    if (el.syncMsg) {
+      el.syncMsg.textContent = 'きろくを探しています...';
+      el.syncMsg.style.color = '#00B894';
+    }
+
+    try {
+      const res = await api.loadProgress(name);
+      if (res.exists) {
+        progress.nickname = name;
+        progress.totalCorrect = parseInt(res.totalCorrect, 10) || 0;
+        const stageInfo = getEggStageInfo(progress.totalCorrect);
+        progress.lastStage = stageInfo.stage;
+        saveLocalProgress();
+        updateEggDisplay();
+
+        if (el.syncMsg) el.syncMsg.textContent = `🎉 「${name}」さんのきろく（${progress.totalCorrect}問）を復元しました！`;
+        setTimeout(() => {
+          if (el.modalSync) el.modalSync.classList.add('hidden');
+        }, 1500);
+      } else {
+        if (el.syncMsg) {
+          el.syncMsg.textContent = `「${name}」のきろくが見つかりませんでした。`;
+          el.syncMsg.style.color = 'var(--primary)';
+        }
+      }
+    } catch (e) {
+      if (el.syncMsg) {
+        el.syncMsg.textContent = '読み込みに失敗しました: ' + e.message;
+        el.syncMsg.style.color = 'var(--primary)';
+      }
+    }
+  });
+}
 
 
 function escapeHTML(str) {
