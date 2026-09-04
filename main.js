@@ -23,10 +23,7 @@ const el = {
   eggOverlay: document.getElementById('egg-overlay'),
   eggStageTag: document.getElementById('egg-stage-tag'),
   totalCorrectDisplay: document.getElementById('total-correct-display'),
-  eggProgressFill: document.getElementById('egg-progress-fill'),
   nextCrackHint: document.getElementById('next-crack-hint'),
-  nextCrackCount: document.getElementById('next-crack-count'),
-  classTotalDisplay: document.getElementById('class-total-display'),
   
   // ゲーム画面
   timeLeft: document.getElementById('time-left'),
@@ -64,7 +61,6 @@ const el = {
   resultEggOverlay: document.getElementById('result-egg-overlay'),
   resultGainCorrect: document.getElementById('result-gain-correct'),
   resultTotalCorrect: document.getElementById('result-total-correct'),
-  resultProgressFill: document.getElementById('result-progress-fill'),
   resultNextCrack: document.getElementById('result-next-crack'),
   nickname: document.getElementById('nickname'),
   btnRegister: document.getElementById('btn-register'),
@@ -124,16 +120,35 @@ function saveLocalProgress() {
   }
 }
 
-// 卵ステージ情報の定義（全5000問）
+// 卵ステージ情報の定義（問数は完全秘密）
 const EGG_STAGES = [
-  { stage: 0, min: 0, max: 99, name: '🌱 Stage 0: つるつるのたまご', img: 'assets/egg_stage0.jpg', desc: 'まだヒビは入っていません。大事に育てよう！' },
-  { stage: 1, min: 100, max: 499, name: '✨ Stage 1: かすかなヒビ', img: 'assets/egg_stage1.jpg', desc: '100問正解達成！ピキッと小さなたまごのヒビが入ったよ！' },
-  { stage: 2, min: 500, max: 999, name: '⚡ Stage 2: 小さなヒビ', img: 'assets/egg_stage2.jpg', desc: '500問正解達成！ヒビが少しずつ枝分かれしてきたよ！' },
-  { stage: 3, min: 1000, max: 1999, name: '🌟 Stage 3: 広がるヒビ', img: 'assets/egg_stage3.jpg', desc: '1,000問正解達成！たまご全体にヒビが広がってきたよ！' },
-  { stage: 4, min: 2000, max: 2999, name: '💫 Stage 4: 光あふれるヒビ', img: 'assets/egg_stage4.jpg', desc: '2,000問正解達成！ヒビの隙間から神秘的な光が漏れ出している！' },
-  { stage: 5, min: 3000, max: 3999, name: '🔥 Stage 5: 割れかけのたまご', img: 'assets/egg_stage4.jpg', desc: '3,000問正解達成！ヒビが深く大きくなり、たまごが揺れている！', overlayType: 'stage5' },
-  { stage: 6, min: 4000, max: 4999, name: '🐣 Stage 6: いまにも生まれそう！', img: 'assets/egg_stage4.jpg', desc: '4,000問正解達成！殻の中から可愛い羽と瞳がチラ見えしているよ！', overlayType: 'stage6' },
-  { stage: 7, min: 5000, max: Infinity, name: '👑 Stage 7: 伝説の親鳥誕生！', img: 'assets/egg_stage4.jpg', desc: '🎉 5,000問正解達成！！ついにパッカーン！と殻が割れて、伝説の親鳥が誕生しました！！', overlayType: 'stage7' }
+  { stage: 0, min: 0, max: 99, name: '🌱 つるつるのたまご', img: 'assets/egg_stage0.jpg', 
+    desc: 'まだヒビは入っていません。大事にあたためて育てよう！',
+    hint: 'まあるいたまごを 大事に あたためているよ… なにが生まれるかな？ ✨' },
+  { stage: 1, min: 100, max: 499, name: '✨ かすかなヒビ', img: 'assets/egg_stage1.jpg', 
+    desc: 'ピキッ…！たまごに小さなしるしが入ったよ！命が元気に育っているみたい…！',
+    hint: 'ピキッ…と小さなしるしが見えるよ。たまごが温まってきたみたい！ 🌱' },
+  { stage: 2, min: 500, max: 999, name: '⚡ 小さなヒビ', img: 'assets/egg_stage2.jpg', 
+    desc: 'ヒビが少しずつ枝分かれしてきたよ！たまごの中からコツコツ音がするかも…？',
+    hint: 'コツコツ…と中から音が聞こえるよ！元気に育っているね！ 🎶' },
+  { stage: 3, min: 1000, max: 1999, name: '🌟 広がるヒビ', img: 'assets/egg_stage3.jpg', 
+    desc: 'たまご全体にヒビが広がってきたよ！中から元気な声が聞こえそう！',
+    hint: 'ヒビが広がってきたよ！どんな鳥が生まれるかな…？ドキドキ！ 🌟' },
+  { stage: 4, min: 2000, max: 2999, name: '💫 光あふれるヒビ', img: 'assets/egg_stage4.jpg', 
+    desc: 'ヒビの隙間から神秘的な光が漏れ出している！奇跡が起きるかも！？',
+    hint: 'ヒビからまぶしい光があふれている…！もうすぐ奇跡が起きるかも！？ 💫' },
+  { stage: 5, min: 3000, max: 3999, name: '🔥 カタカタ揺れるたまご', img: 'assets/egg_stage4.jpg', 
+    desc: 'ヒビが深くなって、たまごがカタカタ揺れている！いつ生まれるかな！？',
+    hint: 'たまごがカタカタ激しく動いているよ！いつ生まれるかな…！？ 🔥',
+    overlayType: 'stage5' },
+  { stage: 6, min: 4000, max: 4999, name: '🐣 いまにも生まれそう！', img: 'assets/egg_stage4.jpg', 
+    desc: '殻の中から可愛い瞳と羽がチラリ！もう生まれる寸前だよ！！',
+    hint: '殻の中から可愛い瞳がチラリ！もう生まれる寸前だよ！！ 🐣',
+    overlayType: 'stage6' },
+  { stage: 7, min: 5000, max: Infinity, name: '👑 伝説の親鳥誕生！', img: 'assets/egg_stage4.jpg', 
+    desc: '🎉 ついにパッカーン！！と殻が割れて、奇跡の親鳥が元気に誕生しました！！',
+    hint: '🎉 奇跡の親鳥が元気に誕生しました！ずっと大切にしてね！ 👑',
+    overlayType: 'stage7' }
 ];
 
 function getEggStageInfo(correctCount) {
@@ -224,30 +239,22 @@ function updateEggDisplay() {
   const info = getEggStageInfo(progress.totalCorrect);
   
   // タイトル画面
-  el.eggDisplayImg.src = info.img;
-  el.eggOverlay.innerHTML = getEggOverlayHTML(info.overlayType);
-  el.eggStageTag.textContent = info.name;
-  el.totalCorrectDisplay.textContent = progress.totalCorrect.toLocaleString();
-  
-  const pct = Math.min(100, (progress.totalCorrect / 5000) * 100);
-  el.eggProgressFill.style.width = `${pct}%`;
-  
-  if (info.stage >= 7) {
-    el.nextCrackHint.innerHTML = '🎉 <strong style="color:#FF7675">伝説の親鳥が誕生しました！おめでとう！</strong>';
-  } else {
-    const nextTarget = EGG_STAGES[info.stage + 1].min;
-    const diff = nextTarget - progress.totalCorrect;
-    el.nextCrackCount.textContent = diff.toLocaleString();
-  }
+  if (el.eggDisplayImg) el.eggDisplayImg.src = info.img;
+  if (el.eggOverlay) el.eggOverlay.innerHTML = getEggOverlayHTML(info.overlayType);
+  if (el.eggStageTag) el.eggStageTag.textContent = info.name;
+  if (el.totalCorrectDisplay) el.totalCorrectDisplay.textContent = progress.totalCorrect.toLocaleString();
+  if (el.nextCrackHint) el.nextCrackHint.textContent = info.hint;
 
   // ミニ卵（ゲーム画面）
-  el.miniCorrectCount.textContent = progress.totalCorrect;
-  if (info.stage >= 7) {
-    el.miniEggIcon.textContent = '🕊️';
-  } else if (info.stage >= 4) {
-    el.miniEggIcon.textContent = '✨';
-  } else {
-    el.miniEggIcon.textContent = '🥚';
+  if (el.miniCorrectCount) el.miniCorrectCount.textContent = progress.totalCorrect;
+  if (el.miniEggIcon) {
+    if (info.stage >= 7) {
+      el.miniEggIcon.textContent = '🕊️';
+    } else if (info.stage >= 4) {
+      el.miniEggIcon.textContent = '✨';
+    } else {
+      el.miniEggIcon.textContent = '🥚';
+    }
   }
 }
 
@@ -292,7 +299,6 @@ function showScreen(screenName) {
   screens[screenName].classList.add('active');
   if (screenName === 'title') {
     updateEggDisplay();
-    refreshClassProgress();
   }
 }
 
@@ -547,15 +553,24 @@ function endGame() {
   el.resultEggImg.src = currentStageInfo.img;
   el.resultEggOverlay.innerHTML = getEggOverlayHTML(currentStageInfo.overlayType);
 
-  const pct = Math.min(100, (progress.totalCorrect / 5000) * 100);
-  el.resultProgressFill.style.width = `${pct}%`;
+  if (el.resultProgressFill) {
+    el.resultProgressFill.style.width = '0%';
+  }
 
   if (currentStageInfo.stage >= 7) {
-    el.resultNextCrack.innerHTML = '🎉 <strong>親鳥誕生達成済み！</strong>';
+    el.resultNextCrack.innerHTML = '🎉 <strong>親鳥がパタパタ羽ばたいているよ！</strong>';
+  } else if (state.sessionCorrect > 0) {
+    const eggReactions = [
+      '🥚 たまごが 嬉しそうに ポヨンと揺れたよ！',
+      '✨ たまごが ほんのり あたたかくなったよ！',
+      '💕 たまごが 元気いっぱいに 反応しているよ！',
+      '🌱 たまごの中の いのちが 育っているよ…！',
+      '🎶 たまごから コツコツと 音が返ってきたよ！'
+    ];
+    const reaction = eggReactions[Math.floor(Math.random() * eggReactions.length)];
+    el.resultNextCrack.textContent = reaction;
   } else {
-    const nextTarget = EGG_STAGES[currentStageInfo.stage + 1].min;
-    const diff = nextTarget - progress.totalCorrect;
-    el.resultNextCrack.textContent = `あと ${diff.toLocaleString()} 問で次の変化…！`;
+    el.resultNextCrack.textContent = 'たまごを 大事に あたため中…';
   }
 
   // ステージ昇格チェック
@@ -741,7 +756,6 @@ el.btnSyncSave.addEventListener('click', async () => {
     const stageInfo = getEggStageInfo(progress.totalCorrect);
     await api.saveProgress(name, progress.totalCorrect, stageInfo.name);
     el.syncMsg.textContent = '☁️ 保存が完了しました！いつでも引き継げます。';
-    refreshClassProgress();
   } catch (e) {
     el.syncMsg.textContent = '保存に失敗しました: ' + e.message;
     el.syncMsg.style.color = 'var(--primary)';
@@ -784,17 +798,6 @@ el.btnSyncLoad.addEventListener('click', async () => {
   }
 });
 
-// クラス全体の合計進捗を更新
-async function refreshClassProgress() {
-  try {
-    const res = await api.getClassProgress();
-    if (res && res.success) {
-      el.classTotalDisplay.textContent = res.classTotalCorrect.toLocaleString();
-    }
-  } catch (e) {
-    console.warn('Class progress load failed:', e);
-  }
-}
 
 function escapeHTML(str) {
   return str.replace(/[&<>'"]/g, 
@@ -863,4 +866,3 @@ function createConfetti(count = 30) {
 // 初期化
 loadLocalProgress();
 updateEggDisplay();
-refreshClassProgress();
