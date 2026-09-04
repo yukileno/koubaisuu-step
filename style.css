@@ -404,7 +404,7 @@ button {
    =================================================== */
 #screen-game {
   justify-content: space-between;
-  padding: 12px 24px;
+  padding: 10px 20px;
 }
 
 .header {
@@ -412,7 +412,8 @@ button {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  height: 60px;
+  height: 52px;
+  margin-bottom: 6px;
 }
 
 .header-left, .header-right {
@@ -426,7 +427,7 @@ button {
   gap: 16px;
 }
 
-.time-box, .score-box {
+.correct-badge-box {
   background: #FFF;
   border-radius: 16px;
   padding: 6px 16px;
@@ -437,27 +438,41 @@ button {
   border: 3px solid #FFF5E1;
 }
 
-.time-box .label, .score-box .label {
+.correct-badge-box .label {
   font-size: 0.8rem;
   color: var(--text-sub);
   font-weight: 900;
 }
 
-.time-box .value {
+.correct-badge-box .value {
   font-size: 1.6rem;
   font-weight: 900;
   color: #E84393;
 }
 
-.time-box .unit {
+.correct-badge-box .unit {
   font-size: 0.9rem;
   color: #E84393;
+  font-weight: bold;
 }
 
-.score-box .value {
-  font-size: 1.6rem;
+.btn-header-finish {
+  background: #FFFFFF;
+  color: #D63031;
+  font-size: 1rem;
   font-weight: 900;
-  color: #00B894;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 2px solid #FFCCD5;
+  border-bottom: 4px solid #FF7675;
+  box-shadow: 0 4px 10px rgba(255, 118, 117, 0.2);
+  cursor: pointer;
+  transition: transform 0.1s ease, border-bottom-width 0.1s ease;
+}
+
+.btn-header-finish:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
 }
 
 /* ミニたまごリアクション */
@@ -569,27 +584,31 @@ button {
   display: none !important;
 }
 
-/* メイン出題エリア */
-.main-area {
+/* ===================================================
+   左右2カラム ゲームプレイレイアウト
+   =================================================== */
+.game-play-layout {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  margin: 4px 0;
+  gap: 18px;
+  width: 100%;
+  max-width: 960px;
+  margin: 4px auto 0;
+  align-items: stretch;
 }
 
+/* 左カラム: 問題エリア */
 .problem-area {
+  flex: 1.25;
   background: var(--card-bg);
   border-radius: 24px;
-  padding: 14px 28px;
+  padding: 14px 20px;
   box-shadow: var(--card-shadow);
   border: 4px solid #FFF;
-  width: 100%;
-  max-width: 780px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-around;
   gap: 12px;
 }
 
@@ -599,8 +618,10 @@ button {
   gap: 10px;
   background: #FFF9E6;
   border: 3px solid #FFEAA7;
-  padding: 6px 24px;
+  padding: 8px 24px;
   border-radius: 30px;
+  width: 100%;
+  justify-content: center;
 }
 
 .q-icon {
@@ -608,7 +629,7 @@ button {
 }
 
 #current-question {
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   color: var(--text-dark);
 }
 
@@ -621,18 +642,17 @@ button {
 /* ステップインジケーター */
 .step-indicator {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
   justify-content: center;
 }
 
 .step-card {
   flex: 1;
-  max-width: 190px;
   background: #FFF;
   border: 3px solid #E8DFD8;
   border-radius: 18px;
-  padding: 10px 8px;
+  padding: 10px 6px;
   text-align: center;
   transition: all 0.25s ease;
   position: relative;
@@ -693,19 +713,21 @@ button {
 .answer-interactive {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 16px;
-  height: 42px;
+  height: 48px;
+  width: 100%;
 }
 
 .input-display {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 900;
   color: var(--text-dark);
   background: #FFF;
   border: 3px solid #FF7675;
   border-radius: 14px;
-  padding: 0 24px;
-  min-width: 120px;
+  padding: 2px 28px;
+  min-width: 140px;
   text-align: center;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -716,16 +738,27 @@ button {
   min-width: 140px;
 }
 
-/* テンキーエリア（ぷにぷにボタン） */
-.numpad {
+/* 右カラム: テンキーエリア（電卓型テンキー） */
+.numpad-wrapper {
+  flex: 0.85;
+  max-width: 320px;
+  background: #FFFDF8;
+  border-radius: 24px;
+  padding: 12px;
+  border: 4px solid #FFF;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.numpad-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
   gap: 10px;
   width: 100%;
-  max-width: 780px;
-  height: 125px;
-  margin: 0 auto;
+  height: 100%;
 }
 
 .num-btn {
@@ -733,14 +766,15 @@ button {
   border: 2px solid #FFE4E8;
   border-bottom: 5px solid #FFCCD5;
   border-radius: 16px;
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 900;
   color: var(--text-dark);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: center;
   align-items: center;
   transition: transform 0.08s ease, border-bottom-width 0.08s ease;
+  min-height: 54px;
 }
 
 .num-btn:active {
@@ -757,11 +791,12 @@ button {
   align-items: center;
   color: #FFF;
   transition: transform 0.08s ease, border-bottom-width 0.08s ease;
+  min-height: 54px;
 }
 
 .btn-clear {
-  background: linear-gradient(135deg, #B2BEC3, #636E72);
-  border-bottom: 5px solid #2D3436;
+  background: linear-gradient(135deg, #FF7675, #D63031);
+  border-bottom: 5px solid #A71D2A;
 }
 
 .btn-clear:active {

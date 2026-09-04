@@ -47,18 +47,18 @@
 
       <div class="title-buttons">
         <button id="btn-start" class="btn-primary btn-pulse">▶ ゲームスタート！</button>
-        <button id="btn-ranking-view" class="btn-secondary">🏆 ハイスコアランキング</button>
+        <button id="btn-ranking-view" class="btn-secondary">🏆 せいかい数ランキング</button>
       </div>
     </div>
 
     <!-- ==================== ゲーム画面 ==================== -->
     <div id="screen-game" class="screen">
-      <!-- ヘッダー情報 -->
+      <!-- ヘッダー情報（制限時間・コンボなし、自分のペースでゆったり学習） -->
       <div class="header">
         <div class="header-left">
-          <div class="time-box">
-            <span class="label">のこり時間</span>
-            <span id="time-left" class="value">90</span><span class="unit">秒</span>
+          <div class="correct-badge-box">
+            <span class="label">こんかいのせいかい</span>
+            <span id="session-correct-val" class="value">0</span><span class="unit">問</span>
           </div>
         </div>
         
@@ -67,32 +67,20 @@
           <div class="mini-egg-status" id="mini-egg-status" title="正解でたまごが喜ぶよ！">
             <div class="mini-egg-icon" id="mini-egg-icon">🥚</div>
             <div class="mini-egg-info">
-              <span class="mini-label">せいかい累計</span>
+              <span class="mini-label">ぜんぶのせいかい</span>
               <span class="mini-val" id="mini-correct-count">0</span><span class="mini-unit">問</span>
-            </div>
-          </div>
-          <!-- フィーバーゲージ -->
-          <div class="fever-container">
-            <div class="fever-label">⚡ FEVER GAUGE</div>
-            <div class="fever-bar-bg">
-              <div id="fever-bar" class="fever-bar-fill" style="width: 0%;"></div>
             </div>
           </div>
         </div>
 
         <div class="header-right">
-          <div class="score-box">
-            <span class="label">スコア</span>
-            <span id="score" class="value">0</span>
-          </div>
+          <button id="btn-finish-game" class="btn-header-finish">🏠 おわる</button>
         </div>
       </div>
 
-      <!-- コンボ通知 -->
-      <div id="combo-badge" class="combo-badge hidden">🔥 <span id="combo-count">2</span> COMBO!</div>
-
-      <!-- メイン出題エリア -->
-      <div class="main-area">
+      <!-- メインプレイエリア（左右2カラム配置: 左=問題とステップ、右=テンキー） -->
+      <div class="game-play-layout">
+        <!-- 左カラム: 問題エリア -->
         <div class="problem-area">
           <div class="question-banner">
             <span class="q-icon">🎯</span>
@@ -124,22 +112,24 @@
             <div class="feedback" id="feedback-msg"></div>
           </div>
         </div>
-      </div>
 
-      <!-- テンキーエリア（ぷにぷにボタン） -->
-      <div class="numpad">
-        <button class="num-btn" data-num="1">1</button>
-        <button class="num-btn" data-num="2">2</button>
-        <button class="num-btn" data-num="3">3</button>
-        <button class="num-btn" data-num="4">4</button>
-        <button class="num-btn" data-num="5">5</button>
-        <button class="num-btn" data-num="6">6</button>
-        <button class="num-btn" data-num="7">7</button>
-        <button class="num-btn" data-num="8">8</button>
-        <button class="num-btn" data-num="9">9</button>
-        <button class="func-btn btn-clear" id="btn-clear">クリア ✕</button>
-        <button class="num-btn" data-num="0">0</button>
-        <button class="func-btn btn-submit" id="btn-submit">けってい ✔</button>
+        <!-- 右カラム: テンキーエリア（電卓風 3×4 グリッド配置） -->
+        <div class="numpad-wrapper">
+          <div class="numpad-grid">
+            <button class="num-btn" data-num="7">7</button>
+            <button class="num-btn" data-num="8">8</button>
+            <button class="num-btn" data-num="9">9</button>
+            <button class="num-btn" data-num="4">4</button>
+            <button class="num-btn" data-num="5">5</button>
+            <button class="num-btn" data-num="6">6</button>
+            <button class="num-btn" data-num="1">1</button>
+            <button class="num-btn" data-num="2">2</button>
+            <button class="num-btn" data-num="3">3</button>
+            <button class="func-btn btn-clear" id="btn-clear">クリア ✕</button>
+            <button class="num-btn" data-num="0">0</button>
+            <button class="func-btn btn-submit" id="btn-submit">けってい ✔</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -148,7 +138,7 @@
       <div class="result-card">
         <div class="result-header">
           <div id="result-stars" class="result-stars">★★★</div>
-          <h2 class="result-title">タイムアップ！</h2>
+          <h2 class="result-title">✨ おつかれさま！ ✨</h2>
           <div id="result-rank" class="result-rank">称号: 公倍数マスター</div>
         </div>
         
@@ -167,21 +157,21 @@
 
         <div class="result-stats-grid">
           <div class="stat-item">
-            <div class="stat-label">トータルスコア</div>
-            <div class="stat-val" id="final-score">0</div>
+            <div class="stat-label">今回のせいかい</div>
+            <div class="stat-val"><span id="final-session-correct">0</span> <span class="unit">問</span></div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">クリアした問題</div>
-            <div class="stat-val"><span id="final-correct">0</span> <span class="unit">問</span></div>
+            <div class="stat-label">ぜんぶのせいかい</div>
+            <div class="stat-val"><span id="final-total-correct">0</span> <span class="unit">問</span></div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">最大コンボ</div>
-            <div class="stat-val"><span id="final-max-combo">0</span> <span class="unit">連続</span></div>
+            <div class="stat-label">たまごのようす</div>
+            <div class="stat-val-text" id="final-egg-status">まあるいたまご</div>
           </div>
         </div>
 
         <div id="ranking-form-area" class="ranking-form">
-          <p class="form-title">🏆 ハイスコアランキングに登録</p>
+          <p class="form-title">🏆 せいかい数ランキングに登録</p>
           <div class="input-row">
             <input type="text" id="nickname" placeholder="ニックネーム (12文字まで)" maxlength="12">
             <button id="btn-register" class="btn-primary">登録する</button>
@@ -190,7 +180,7 @@
         </div>
 
         <div class="result-actions">
-          <button id="btn-retry" class="btn-primary">🔄 もう一度あそぶ</button>
+          <button id="btn-retry" class="btn-primary">🔄 つづけてあそぶ</button>
           <button id="btn-back-title" class="btn-secondary">🏠 タイトルへ</button>
         </div>
       </div>
@@ -199,7 +189,7 @@
     <!-- ==================== ランキング画面 ==================== -->
     <div id="screen-ranking" class="screen">
       <div class="ranking-container">
-        <h2>🏆 殿堂入りランキング Top 20</h2>
+        <h2>🏆 せいかい数ランキング Top 20</h2>
         <div id="ranking-list" class="ranking-list">
           <p class="loading-text">ランキングを読み込み中...</p>
         </div>

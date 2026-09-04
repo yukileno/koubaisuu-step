@@ -26,11 +26,8 @@ const el = {
   nextCrackHint: document.getElementById('next-crack-hint'),
   
   // ゲーム画面
-  timeLeft: document.getElementById('time-left'),
-  score: document.getElementById('score'),
-  feverBar: document.getElementById('fever-bar'),
-  comboBadge: document.getElementById('combo-badge'),
-  comboCount: document.getElementById('combo-count'),
+  sessionCorrectVal: document.getElementById('session-correct-val'),
+  btnFinishGame: document.getElementById('btn-finish-game'),
   miniEggStatus: document.getElementById('mini-egg-status'),
   miniEggIcon: document.getElementById('mini-egg-icon'),
   miniCorrectCount: document.getElementById('mini-correct-count'),
@@ -52,9 +49,9 @@ const el = {
   btnSubmit: document.getElementById('btn-submit'),
   
   // リザルト画面
-  finalScore: document.getElementById('final-score'),
-  finalCorrect: document.getElementById('final-correct'),
-  finalMaxCombo: document.getElementById('final-max-combo'),
+  finalSessionCorrect: document.getElementById('final-session-correct'),
+  finalTotalCorrect: document.getElementById('final-total-correct'),
+  finalEggStatus: document.getElementById('final-egg-status'),
   resultStars: document.getElementById('result-stars'),
   resultRank: document.getElementById('result-rank'),
   resultEggImg: document.getElementById('result-egg-img'),
@@ -261,19 +258,13 @@ function updateEggDisplay() {
 // ===================================================
 // ゲーム状態管理
 // ===================================================
+// ゲーム状態管理（制限時間・コンボ・フィーバー全廃、自分のペースで学習）
+// ===================================================
 let state = {
-  score: 0,
-  timeLeft: 90,
-  timerId: null,
   currentQ: null,
   currentStep: 0,
   inputValue: '',
   sessionCorrect: 0, // 今回のプレイでの正解数
-  combo: 0,
-  maxCombo: 0,
-  feverGauge: 0,
-  isFever: false,
-  feverTimer: null,
   sessionToken: null
 };
 
@@ -311,16 +302,9 @@ el.btnSoundToggle.addEventListener('click', () => {
 // ゲーム開始
 async function startGame() {
   sounds.playClick();
-  state.score = 0;
-  state.timeLeft = 90;
   state.currentStep = 0;
   state.inputValue = '';
   state.sessionCorrect = 0;
-  state.combo = 0;
-  state.maxCombo = 0;
-  state.feverGauge = 0;
-  state.isFever = false;
-  el.appContainer.classList.remove('fever-mode');
   
   updateDisplays();
   showScreen('game');
@@ -332,16 +316,6 @@ async function startGame() {
   }
 
   nextQuestion();
-  
-  if (state.timerId) clearInterval(state.timerId);
-  state.timerId = setInterval(() => {
-    state.timeLeft--;
-    if (state.timeLeft <= 0) {
-      state.timeLeft = 0;
-      endGame();
-    }
-    updateDisplays();
-  }, 1000);
 }
 
 // 次の問題
@@ -381,17 +355,8 @@ function updateStepUI() {
 }
 
 function updateDisplays() {
-  el.timeLeft.textContent = state.timeLeft;
-  el.score.textContent = state.score;
-  el.feverBar.style.width = `${state.feverGauge}%`;
-  el.miniCorrectCount.textContent = progress.totalCorrect;
-
-  if (state.combo >= 2) {
-    el.comboBadge.classList.remove('hidden');
-    el.comboCount.textContent = state.combo;
-  } else {
-    el.comboBadge.classList.add('hidden');
-  }
+  if (el.sessionCorrectVal) el.sessionCorrectVal.textContent = state.sessionCorrect;
+  if (el.miniCorrectCount) el.miniCorrectCount.textContent = progress.totalCorrect;
 }
 
 function updateInputDisplay() {
@@ -421,51 +386,42 @@ function handleSubmit() {
   
   if (num === correctAns) {
     // 正解処理
-    state.combo++;
-    if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-
-    // スコア計算
-    let multiplier = 1 + (state.combo - 1) * 0.15;
-    if (state.isFever) multiplier *= 2;
-    const addedScore = Math.round(10 * multiplier);
-    state.score += addedScore;
-
-    // フィーバーゲージ加算
-    if (!state.isFever) {
-      state.feverGauge += 15;
-      if (state.feverGauge >= 100) {
-        startFever();
-      }
-    }
-
     sounds.playStepSuccess(state.currentStep);
     sounds.playEggBounce();
     
     // ミニ卵をポヨンと弾ませる
     el.miniEggIcon.classList.remove('bounce');
-    void el.miniEggIcon.offsetWidth; // リフロー強制
+    void el.miniEggIcon.offsetWidth;
     el.miniEggIcon.classList.add('bounce');
 
-    el.feedbackMsg.textContent = `＋${addedScore}pt!`;
+    el.feedbackMsg.textContent = 'せいかい！✨';
     el.feedbackMsg.style.color = '#00B894';
     
     state.currentStep++;
     state.inputValue = '';
     
     if (state.currentStep > 2) {
-      // 1問コンプリート！累計正解数を加算！
+      // 1問コンプリート！正解数を加算！
       state.sessionCorrect++;
       progress.totalCorrect++;
       saveLocalProgress();
-
-      const bonusScore = Math.round(30 * multiplier);
-      state.score += bonusScore;
       
       sounds.playQuestionClear();
       createConfetti(18);
-      el.feedbackMsg.textContent = `PERFECT! ＋${bonusScore}pt!`;
+      el.feedbackMsg.textContent = 'PERFECT! 🐣✨';
       updateStepUI();
       updateDisplays();
+
+      // ステージ昇格チェック（ヒビが入るか親鳥誕生か）
+      const currentStageInfo = getEggStageInfo(progress.totalCorrect);
+      if (currentStageInfo.stage > progress.lastStage) {
+        progress.lastStage = currentStageInfo.stage;
+        saveLocalProgress();
+        setTimeout(() => {
+          triggerEvolutionModal(currentStageInfo);
+        }, 350);
+      }
+
       setTimeout(nextQuestion, 550);
     } else {
       updateStepUI();
@@ -473,73 +429,39 @@ function handleSubmit() {
       updateDisplays();
     }
   } else {
-    // 誤答処理
+    // 誤答処理（時間ペナルティなし）
     sounds.playWrong();
-    state.combo = 0;
-    state.feverGauge = Math.max(0, state.feverGauge - 20);
-    
-    el.feedbackMsg.textContent = 'ちがうよ！(-3秒)';
+    el.feedbackMsg.textContent = 'おしい！もういちど';
     el.feedbackMsg.style.color = 'var(--primary)';
-    state.timeLeft = Math.max(0, state.timeLeft - 3);
     state.inputValue = '';
     updateInputDisplay();
-    updateDisplays();
   }
 }
 
-// フィーバーモード
-function startFever() {
-  state.isFever = true;
-  state.feverGauge = 100;
-  el.appContainer.classList.add('fever-mode');
-  sounds.playFever();
-  createConfetti(30);
-
-  // 時間回復ボーナス (+5秒)
-  state.timeLeft += 5;
-
-  let timeLeftInFever = 8;
-  if (state.feverTimer) clearInterval(state.feverTimer);
-  state.feverTimer = setInterval(() => {
-    timeLeftInFever--;
-    state.feverGauge = (timeLeftInFever / 8) * 100;
-    updateDisplays();
-    if (timeLeftInFever <= 0) {
-      clearInterval(state.feverTimer);
-      state.isFever = false;
-      state.feverGauge = 0;
-      el.appContainer.classList.remove('fever-mode');
-      updateDisplays();
-    }
-  }, 1000);
-}
-
 // ゲーム終了・リザルト
-function endGame() {
-  clearInterval(state.timerId);
-  if (state.feverTimer) clearInterval(state.feverTimer);
-  el.appContainer.classList.remove('fever-mode');
-  
+function finishGame() {
   sounds.playResult();
   createConfetti(40);
 
-  el.finalScore.textContent = state.score;
-  el.finalCorrect.textContent = state.sessionCorrect;
-  el.finalMaxCombo.textContent = state.maxCombo;
+  const currentStageInfo = getEggStageInfo(progress.totalCorrect);
 
-  // 称号の判定
+  if (el.finalSessionCorrect) el.finalSessionCorrect.textContent = state.sessionCorrect;
+  if (el.finalTotalCorrect) el.finalTotalCorrect.textContent = progress.totalCorrect.toLocaleString();
+  if (el.finalEggStatus) el.finalEggStatus.textContent = currentStageInfo.name;
+
+  // 称号の判定（今回の正解数に応じる）
   let stars = '★☆☆';
-  let rank = '公倍数ビギナー';
-  if (state.score >= 500) {
+  let rank = '🌱 たまごみならい';
+  if (state.sessionCorrect >= 20) {
     stars = '★★★';
     rank = '👑 公倍数ゴッドマスター';
-  } else if (state.score >= 300) {
+  } else if (state.sessionCorrect >= 10) {
     stars = '★★★';
     rank = '🌟 公倍数マスター';
-  } else if (state.score >= 150) {
+  } else if (state.sessionCorrect >= 5) {
     stars = '★★☆';
     rank = '🚀 スピードスター';
-  } else if (state.score >= 80) {
+  } else if (state.sessionCorrect >= 1) {
     stars = '★☆☆';
     rank = '✨ 公倍数チャレンジャー';
   }
@@ -547,15 +469,10 @@ function endGame() {
   el.resultRank.textContent = `称号: ${rank}`;
 
   // 卵成長リザルトの表示
-  const currentStageInfo = getEggStageInfo(progress.totalCorrect);
   el.resultGainCorrect.textContent = `+${state.sessionCorrect}`;
   el.resultTotalCorrect.textContent = progress.totalCorrect.toLocaleString();
   el.resultEggImg.src = currentStageInfo.img;
   el.resultEggOverlay.innerHTML = getEggOverlayHTML(currentStageInfo.overlayType);
-
-  if (el.resultProgressFill) {
-    el.resultProgressFill.style.width = '0%';
-  }
 
   if (currentStageInfo.stage >= 7) {
     el.resultNextCrack.innerHTML = '🎉 <strong>親鳥がパタパタ羽ばたいているよ！</strong>';
@@ -571,15 +488,6 @@ function endGame() {
     el.resultNextCrack.textContent = reaction;
   } else {
     el.resultNextCrack.textContent = 'たまごを 大事に あたため中…';
-  }
-
-  // ステージ昇格チェック
-  if (currentStageInfo.stage > progress.lastStage) {
-    setTimeout(() => {
-      triggerEvolutionModal(currentStageInfo);
-    }, 800);
-    progress.lastStage = currentStageInfo.stage;
-    saveLocalProgress();
   }
 
   // ニックネームが既にある場合はGASへ自動バックアップ送信
@@ -627,6 +535,13 @@ el.btnBackTitle.addEventListener('click', () => {
   showScreen('title');
 });
 
+if (el.btnFinishGame) {
+  el.btnFinishGame.addEventListener('click', () => {
+    sounds.playClick();
+    finishGame();
+  });
+}
+
 el.numBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     handleNumInput(btn.getAttribute('data-num'));
@@ -635,7 +550,7 @@ el.numBtns.forEach(btn => {
 el.btnClear.addEventListener('click', handleClear);
 el.btnSubmit.addEventListener('click', handleSubmit);
 
-// キーボード操作対応
+// キーボード操作対応（テンキー対応）
 window.addEventListener('keydown', (e) => {
   if (!screens.game.classList.contains('active')) return;
   if (e.key >= '0' && e.key <= '9') {
@@ -657,7 +572,7 @@ el.btnRankingClose.addEventListener('click', () => {
   showScreen('title');
 });
 
-// ハイスコアランキング登録
+// せいかい数ランキング登録
 el.btnRegister.addEventListener('click', async () => {
   sounds.playClick();
   const name = el.nickname.value.trim();
@@ -671,14 +586,12 @@ el.btnRegister.addEventListener('click', async () => {
   saveLocalProgress();
 
   el.btnRegister.disabled = true;
-  el.registerMsg.textContent = '通信中...';
+  el.registerMsg.textContent = '登録中...';
   el.registerMsg.style.color = '#00B894';
   
   try {
-    await api.registerScore(name, state.score, state.sessionToken);
-    // 累計進捗もGASへバックアップ
     const currentStage = getEggStageInfo(progress.totalCorrect);
-    await api.saveProgress(name, progress.totalCorrect, currentStage.name);
+    await api.registerScore(name, progress.totalCorrect, state.sessionToken, currentStage.name);
 
     el.registerMsg.textContent = '🎉 登録が完了しました！';
     setTimeout(() => {
@@ -697,7 +610,7 @@ async function loadRanking() {
   try {
     const list = await api.getRanking();
     if (!list || list.length === 0) {
-      el.rankingList.innerHTML = '<p class="loading-text">まだ記録がありません。一番乗りを目指そう！</p>';
+      el.rankingList.innerHTML = '<p class="loading-text">まだ記録がありません。たくさん解いて一番乗りを目指そう！</p>';
       return;
     }
     
@@ -710,11 +623,13 @@ async function loadRanking() {
       else if (index === 2) medal = '🥉 3位';
       else medal = `${index + 1}位`;
 
+      const stageBadge = item.stage ? `<span style="display:block;font-size:0.75rem;color:var(--text-sub);font-weight:normal;">${escapeHTML(item.stage)}</span>` : '';
+
       return `
         <div class="ranking-item">
           <div class="rank-num">${medal}</div>
-          <div class="rank-name">${escapeHTML(item.name)}</div>
-          <div class="rank-score">${item.score} <span style="font-size:0.8rem">pt</span></div>
+          <div class="rank-name">${escapeHTML(item.name)}${stageBadge}</div>
+          <div class="rank-score">${item.score} <span style="font-size:0.85rem">問</span></div>
         </div>
       `;
     }).join('');

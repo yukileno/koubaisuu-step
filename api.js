@@ -15,8 +15,8 @@ const api = {
     return json.token;
   },
 
-  // スコアの登録
-  async registerScore(name, score, token) {
+  // スコア（正解数）の登録
+  async registerScore(name, score, token, stageName) {
     if (USE_MOCK) {
       console.log(`Mock Register: ${name}, ${score}`);
       return new Promise(resolve => setTimeout(resolve, 500));
@@ -32,6 +32,7 @@ const api = {
         action: 'register',
         name: name,
         score: score,
+        stageName: stageName || '',
         token: token
       })
     });

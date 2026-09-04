@@ -1,23 +1,11 @@
-/**
- * 算数学習Webアプリ 統合ランキング管理バックエンド
- * 公倍数、約数、その他の単元を1つのスプレッドシートでタブ分け集中管理
+﻿/**
+ * 算数学習Webアプリ「公倍数ステップ」
+ * 単一シート「公倍数」一元管理バックエンド
+ * ランキング・進捗記録・引継ぎをすべて「公倍数」シートのみで管理
  */
 
-const DEFAULT_SHEET = '公倍数';
+const MAIN_SHEET_NAME = '公倍数';
 const MAX_RANKING_COUNT = 20;
-
-// 単元コードとシート名のマッピング
-const UNIT_MAP = {
-  'koubaisuu': '公倍数',
-  'yakusuu': '約数',
-  'kouyakusuu': '公約数'
-};
-
-function getSheetName(unit) {
-  if (!unit) return DEFAULT_SHEET;
-  const key = unit.toString().toLowerCase().trim();
-  return UNIT_MAP[key] || unit.toString();
-}
 
 /**
  * 統合スプレッドシートを取得
@@ -29,44 +17,36 @@ function getSpreadsheet() {
 }
 
 /**
- * 指定した単元のシートを取得（存在しなければヘッダー付きで自動作成）
+ * 「公倍数」シートを取得（ヘッダー: 日時, ニックネーム, せいかい数, たまごステージ）
  */
-function getOrCreateUnitSheet(ss, unit) {
-  const sheetName = getSheetName(unit);
-  let sheet = ss.getSheetByName(sheetName);
+function getOrCreateMainSheet(ss) {
+  let sheet = ss.getSheetByName(MAIN_SHEET_NAME);
   
-  // 旧デフォルトの「Ranking」シートがあれば「公倍数」にリネーム
-  if (!sheet && sheetName === '公倍数') {
+  if (!sheet) {
     sheet = ss.getSheetByName('Ranking');
     if (sheet) {
-      sheet.setName('公倍数');
+      sheet.setName(MAIN_SHEET_NAME);
     }
   }
 
   if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(MAIN_SHEET_NAME);
   }
 
   // ヘッダー行が存在しないか空ならセット
   if (sheet.getRange(1, 1).getValue() === '') {
-    const headers = [['日時', 'ニックネーム', 'スコア', 'トークン']];
+    const headers = [['日時', 'ニックネーム', 'せいかい数', 'たまごステージ']];
     sheet.getRange(1, 1, 1, 4).setValues(headers);
     sheet.getRange(1, 1, 1, 4)
-      .setBackground('#43A047')
+      .setBackground('#FF7675')
       .setFontColor('#FFFFFF')
       .setFontWeight('bold')
       .setHorizontalAlignment('center');
     sheet.setFrozenRows(1);
-    sheet.setColumnWidth(1, 180);
-    sheet.setColumnWidth(2, 160);
+    sheet.setColumnWidth(1, 170);
+    sheet.setColumnWidth(2, 150);
     sheet.setColumnWidth(3, 110);
-    sheet.setColumnWidth(4, 220);
-    
-    // サンプル初期データ
-    const now = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
-    sheet.appendRow([now, 'はるき', 2800, 'sample_1']);
-    sheet.appendRow([now, 'ゆい', 2450, 'sample_2']);
-    sheet.appendRow([now, 'れん', 1900, 'sample_3']);
+    sheet.setColumnWidth(4, 160);
   }
 
   return sheet;
@@ -84,17 +64,17 @@ function doPost(e) {
     }
     
     const action = data.action;
-    if (action === 'register') {
+    if (action === 'register' || action === 'bulkRegister') {
       return handleRegister(data);
-    }
-    if (action === 'bulkRegister') {
-      return handleBulkRegister(data);
     }
     if (action === 'saveProgress') {
       return handleSaveProgress(data);
     }
+    if (action === 'resetRanking') {
+      return handleResetRanking();
+    }
     
-    return createJsonResponse({ success: false, error: 'Unknown action' });
+    return createJsonResponse({ success: false, error: 'Unknown action: ' + action });
   } catch (error) {
     return createJsonResponse({ success: false, error: error.toString() });
   }
@@ -106,10 +86,12 @@ function doGet(e) {
     
     if (action === 'init') {
       const ss = getSpreadsheet();
-      getOrCreateUnitSheet(ss, '公倍数');
-      getOrCreateUnitSheet(ss, '約数');
-      getOrCreateProgressSheet(ss);
-      return createJsonResponse({ success: true, message: 'シート初期化完了' });
+      getOrCreateMainSheet(ss);
+      return createJsonResponse({ success: true, message: '公倍数シート初期化完了' });
+    }
+
+    if (action === 'resetRanking') {
+      return handleResetRanking();
     }
 
     if (action === 'getSession') {
@@ -118,143 +100,59 @@ function doGet(e) {
     }
     
     if (action === 'getRanking') {
-      const unit = e && e.parameter ? e.parameter.unit : null;
-      return handleGetRanking(unit);
+      return handleGetRanking();
     }
 
     if (action === 'loadProgress') {
       const name = e && e.parameter ? e.parameter.name : null;
       return handleLoadProgress(name);
     }
-
-    if (action === 'getClassProgress') {
-      return handleGetClassProgress();
-    }
     
-    return createJsonResponse({ success: false, error: 'Unknown action' });
+    return createJsonResponse({ success: false, error: 'Unknown action: ' + action });
   } catch (error) {
     return createJsonResponse({ success: false, error: error.toString() });
   }
 }
 
+/**
+ * せいかい数ランキング登録 / 更新（UPSERT: 1人1行でベスト正解数を保持）
+ */
 function handleRegister(data) {
-  return handleBulkRegister({
-    unit: data.unit,
-    items: [{
-      name: data.name,
-      score: data.score,
-      token: data.token,
-      date: data.date
-    }]
-  });
-}
+  let name = "";
+  let score = 0;
+  let stageName = "";
 
-function handleBulkRegister(data) {
-  const items = Array.isArray(data.items) ? data.items : [];
-  if (items.length === 0) {
-    return createJsonResponse({ success: false, error: '登録データがありません' });
-  }
-
-  const unit = data.unit || (items[0] && items[0].unit) || null;
-  
-  // 有効な行データを抽出
-  const rowsToAdd = [];
-  const nowStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
-  
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const name = item.name ? item.name.toString().substring(0, 12) : "名無し";
-    const score = parseInt(item.score, 10);
-    
-    // スコア上限チェックは絶対に設けない
-    if (isNaN(score) || score < 0) continue;
-    
-    const date = item.date || nowStr;
-    const token = item.token || "";
-    rowsToAdd.push([date, name, score, token]);
-  }
-  
-  if (rowsToAdd.length === 0) {
-    return createJsonResponse({ success: false, error: '有効なスコアがありません' });
-  }
-  
-  // 排他制御
-  const lock = LockService.getScriptLock();
-  if (lock.tryLock(10000)) {
-    try {
-      const ss = getSpreadsheet();
-      const sheet = getOrCreateUnitSheet(ss, unit);
-      
-      // 一括追加
-      const startRow = sheet.getLastRow() + 1;
-      sheet.getRange(startRow, 1, rowsToAdd.length, 4).setValues(rowsToAdd);
-      
-      // スコア順にソート (ヘッダー除外)
-      const lastRow = sheet.getLastRow();
-      if (lastRow > 1) {
-        const range = sheet.getRange(2, 1, lastRow - 1, 4);
-        range.sort({ column: 3, ascending: false }); // 3列目降順
-      }
-      
-      return createJsonResponse({ success: true, count: rowsToAdd.length });
-    } finally {
-      lock.releaseLock();
-    }
+  if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+    name = data.items[0].name;
+    score = parseInt(data.items[0].score, 10);
+    stageName = data.items[0].stageName || "";
   } else {
-    return createJsonResponse({ success: false, error: 'サーバーが混雑しています' });
+    name = data.name;
+    score = parseInt(data.score, 10);
+    stageName = data.stageName || "";
   }
+
+  return saveOrUpdateScore(name, score, stageName);
 }
 
-function handleGetRanking(unit) {
-  const ss = getSpreadsheet();
-  const sheet = getOrCreateUnitSheet(ss, unit);
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) {
-    return createJsonResponse({ success: true, data: [] });
-  }
-  
-  const limit = Math.min(lastRow - 1, MAX_RANKING_COUNT);
-  const values = sheet.getRange(2, 2, limit, 2).getValues();
-  
-  const result = values.map(function(row) {
-    return { name: row[0], score: row[1] };
-  });
-  
-  return createJsonResponse({ success: true, data: result });
-}
-
-function createJsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function getOrCreateProgressSheet(ss) {
-  let sheet = ss.getSheetByName('進捗記録');
-  if (!sheet) {
-    sheet = ss.insertSheet('進捗記録');
-    const headers = [['ニックネーム', '累計正解数', '最終プレイ日時', '卵ステージ']];
-    sheet.getRange(1, 1, 1, 4).setValues(headers);
-    sheet.getRange(1, 1, 1, 4)
-      .setBackground('#FFB74D')
-      .setFontColor('#FFFFFF')
-      .setFontWeight('bold')
-      .setHorizontalAlignment('center');
-    sheet.setFrozenRows(1);
-    sheet.setColumnWidth(1, 160);
-    sheet.setColumnWidth(2, 120);
-    sheet.setColumnWidth(3, 180);
-    sheet.setColumnWidth(4, 150);
-  }
-  return sheet;
-}
-
+/**
+ * 進捗保存（saveProgress）
+ */
 function handleSaveProgress(data) {
-  const name = data.name ? data.name.toString().substring(0, 12).trim() : "";
+  const name = data.name;
   const totalCorrect = parseInt(data.totalCorrect, 10);
-  const stageName = data.stageName ? data.stageName.toString().substring(0, 20) : "";
+  const stageName = data.stageName || "";
+  return saveOrUpdateScore(name, totalCorrect, stageName);
+}
 
-  if (!name || isNaN(totalCorrect) || totalCorrect < 0) {
+/**
+ * 「公倍数」シートへの共通UPSERT処理
+ */
+function saveOrUpdateScore(name, score, stageName) {
+  const cleanName = name ? name.toString().substring(0, 12).trim() : "";
+  const validScore = parseInt(score, 10);
+
+  if (!cleanName || isNaN(validScore) || validScore < 0) {
     return createJsonResponse({ success: false, error: '不正なパラメータです' });
   }
 
@@ -262,31 +160,43 @@ function handleSaveProgress(data) {
   if (lock.tryLock(10000)) {
     try {
       const ss = getSpreadsheet();
-      const sheet = getOrCreateProgressSheet(ss);
+      const sheet = getOrCreateMainSheet(ss);
       const lastRow = sheet.getLastRow();
       const nowStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
-      
+      const cleanStage = stageName ? stageName.toString().substring(0, 30).trim() : "";
+
       let foundRow = -1;
       if (lastRow > 1) {
-        const names = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-        for (let i = 0; i < names.length; i++) {
-          if (names[i][0] === name) {
-            foundRow = i + 2;
+        const names = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+        for (let r = 0; r < names.length; r++) {
+          if (names[r][0] === cleanName) {
+            foundRow = r + 2;
             break;
           }
         }
       }
 
       if (foundRow > 0) {
-        const currentVal = parseInt(sheet.getRange(foundRow, 2).getValue(), 10) || 0;
-        if (totalCorrect >= currentVal) {
-          sheet.getRange(foundRow, 2, 1, 3).setValues([[totalCorrect, nowStr, stageName]]);
+        const currentScore = parseInt(sheet.getRange(foundRow, 3).getValue(), 10) || 0;
+        if (validScore >= currentScore) {
+          sheet.getRange(foundRow, 1, 1, 4).setValues([[nowStr, cleanName, validScore, cleanStage]]);
         }
       } else {
-        sheet.appendRow([name, totalCorrect, nowStr, stageName]);
+        sheet.appendRow([nowStr, cleanName, validScore, cleanStage]);
       }
 
-      return createJsonResponse({ success: true, name: name, totalCorrect: totalCorrect });
+      // せいかい数順にソート (ヘッダー除外, 3列目降順)
+      const newLastRow = sheet.getLastRow();
+      if (newLastRow > 1) {
+        sheet.getRange(2, 1, newLastRow - 1, 4).sort({ column: 3, ascending: false });
+      }
+
+      return createJsonResponse({ 
+        success: true, 
+        name: cleanName, 
+        score: validScore,
+        stageName: cleanStage 
+      });
     } finally {
       lock.releaseLock();
     }
@@ -295,12 +205,42 @@ function handleSaveProgress(data) {
   }
 }
 
+/**
+ * せいかい数ランキングTop 20取得
+ */
+function handleGetRanking() {
+  const ss = getSpreadsheet();
+  const sheet = getOrCreateMainSheet(ss);
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return createJsonResponse({ success: true, data: [] });
+  }
+  
+  const limit = Math.min(lastRow - 1, MAX_RANKING_COUNT);
+  const values = sheet.getRange(2, 2, limit, 3).getValues();
+  
+  const result = values.map(function(row) {
+    return { 
+      name: row[0], 
+      score: row[1],
+      stage: row[2]
+    };
+  });
+  
+  return createJsonResponse({ success: true, data: result });
+}
+
+/**
+ * 進捗読み込み（loadProgress）: 「公倍数」シートから検索
+ */
 function handleLoadProgress(name) {
   if (!name) {
     return createJsonResponse({ success: false, error: '名前が指定されていません' });
   }
+  const cleanName = name.trim();
   const ss = getSpreadsheet();
-  const sheet = getOrCreateProgressSheet(ss);
+  const sheet = getOrCreateMainSheet(ss);
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
     return createJsonResponse({ success: true, exists: false, totalCorrect: 0 });
@@ -308,13 +248,13 @@ function handleLoadProgress(name) {
 
   const values = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
   for (let i = 0; i < values.length; i++) {
-    if (values[i][0] === name.trim()) {
+    if (values[i][1] === cleanName) {
       return createJsonResponse({
         success: true,
         exists: true,
-        name: values[i][0],
-        totalCorrect: values[i][1],
-        lastUpdated: values[i][2],
+        name: values[i][1],
+        totalCorrect: values[i][2],
+        lastUpdated: values[i][0],
         stageName: values[i][3]
       });
     }
@@ -323,28 +263,42 @@ function handleLoadProgress(name) {
   return createJsonResponse({ success: true, exists: false, totalCorrect: 0 });
 }
 
-function handleGetClassProgress() {
+/**
+ * ランキング数値リセット: 「公倍数」シートのデータ行を削除
+ */
+function handleResetRanking() {
   const ss = getSpreadsheet();
-  const sheet = getOrCreateProgressSheet(ss);
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) {
-    return createJsonResponse({ success: true, totalParticipants: 0, classTotalCorrect: 0 });
-  }
-
-  const values = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
-  let sum = 0;
-  let count = 0;
-  for (let i = 0; i < values.length; i++) {
-    const val = parseInt(values[i][0], 10);
-    if (!isNaN(val)) {
-      sum += val;
-      count++;
+  const sheet = getOrCreateMainSheet(ss);
+  
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+      }
+      sheet.getRange(1, 1, 1, 4).setValues([['日時', 'ニックネーム', 'せいかい数', 'たまごステージ']]);
+      sheet.getRange(1, 1, 1, 4)
+        .setBackground('#FF7675')
+        .setFontColor('#FFFFFF')
+        .setFontWeight('bold')
+        .setHorizontalAlignment('center');
+      sheet.setFrozenRows(1);
+      sheet.setColumnWidth(1, 170);
+      sheet.setColumnWidth(2, 150);
+      sheet.setColumnWidth(3, 110);
+      sheet.setColumnWidth(4, 160);
+      
+      return createJsonResponse({ success: true, message: '公倍数シートのランキングをリセットしました' });
+    } finally {
+      lock.releaseLock();
     }
+  } else {
+    return createJsonResponse({ success: false, error: 'サーバーが混雑しています' });
   }
+}
 
-  return createJsonResponse({
-    success: true,
-    totalParticipants: count,
-    classTotalCorrect: sum
-  });
+function createJsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
